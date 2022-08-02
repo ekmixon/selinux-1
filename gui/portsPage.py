@@ -120,9 +120,7 @@ class portsPage(semanagePage):
             p2 = int(treemodel.get_value(iter2, PORT_COL).split('-')[0])
             if p1 > p2:
                 return 1
-            if p1 == p2:
-                return 0
-            return -1
+            return 0 if p1 == p2 else -1
         except:
             return 0
 
@@ -193,7 +191,7 @@ class portsPage(semanagePage):
         protocol = store.get_value(iter, 1)
         try:
             self.wait()
-            (rc, out) = getstatusoutput("semanage port -d -p %s %s" % (protocol, port))
+            (rc, out) = getstatusoutput(f"semanage port -d -p {protocol} {port}")
             self.ready()
             if rc != 0:
                 return self.error(out)
@@ -216,7 +214,10 @@ class portsPage(semanagePage):
         iter = self.ports_protocol_combo.get_active_iter()
         protocol = list_model.get_value(iter, 0)
         self.wait()
-        (rc, out) = getstatusoutput("semanage port -a -p %s -r %s -t %s %s" % (protocol, mls, target, port_number))
+        (rc, out) = getstatusoutput(
+            f"semanage port -a -p {protocol} -r {mls} -t {target} {port_number}"
+        )
+
         self.ready()
         if rc != 0:
             self.error(out)
@@ -236,7 +237,10 @@ class portsPage(semanagePage):
         iter = self.ports_protocol_combo.get_active_iter()
         protocol = list_model.get_value(iter, 0)
         self.wait()
-        (rc, out) = getstatusoutput("semanage port -m -p %s -r %s -t %s %s" % (protocol, mls, target, port_number))
+        (rc, out) = getstatusoutput(
+            f"semanage port -m -p {protocol} -r {mls} -t {target} {port_number}"
+        )
+
         self.ready()
         if rc != 0:
             self.error(out)

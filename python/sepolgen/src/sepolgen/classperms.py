@@ -59,10 +59,7 @@ def p_statements(p):
     '''statements : define_stmt
                   | define_stmt statements
     '''
-    if len(p) == 2:
-        p[0] = [p[1]]
-    else:
-        p[0] = [p[1]] + [p[2]]
+    p[0] = [p[1]] if len(p) == 2 else [p[1]] + [p[2]]
 
 def p_define_stmt(p):
     # This sucks - corresponds to 'define(`foo',`{ read write }')
@@ -75,19 +72,13 @@ def p_list(p):
     '''list : NAME
             | OBRACE names CBRACE
     '''
-    if p[1] == "{":
-        p[0] = p[2]
-    else:
-        p[0] = [p[1]]
+    p[0] = p[2] if p[1] == "{" else [p[1]]
 
 def p_names(p):
     '''names : NAME
              | NAME names
     '''
-    if len(p) == 2:
-        p[0] = [p[1]]
-    else:
-        p[0] = [p[1]] + p[2]
+    p[0] = [p[1]] if len(p) == 2 else [p[1]] + p[2]
 
 def p_error(p):
     print("Syntax error on line %d %s [type=%s]" % (p.lineno, p.value, p.type))
@@ -96,10 +87,8 @@ from . import yacc
 yacc.yacc()
 
 
-f = open("all_perms.spt")
-txt = f.read()
-f.close()
-
+with open("all_perms.spt") as f:
+    txt = f.read()
 #lex.input(txt)
 #while 1:
 #    tok = lex.token()

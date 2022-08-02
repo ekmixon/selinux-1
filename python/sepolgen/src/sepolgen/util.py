@@ -51,9 +51,7 @@ class ConsoleProgressBar:
         old = self.blocks
         self.blocks = int(round(self.current / float(self.steps) * 100) / 2)
 
-        if self.blocks > 50:
-            self.blocks = 50
-
+        self.blocks = min(self.blocks, 50)
         new = self.blocks - old
 
         self.out.write(self.indicator * new)
@@ -173,6 +171,6 @@ if __name__ == "__main__":
     import time
     p = ConsoleProgressBar(sys.stdout, steps=999)
     p.start("computing pi")
-    for i in range(999):
+    for _ in range(999):
         p.step()
         time.sleep(0.001)

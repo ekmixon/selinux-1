@@ -108,13 +108,12 @@ class seParser(argparse.ArgumentParser):
 class SetExportFile(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
-        if values:
-            if values != "-":
-                try:
-                    sys.stdout = open(values, 'w')
-                except:
-                    sys.stderr.write(traceback.format_exc())
-                    sys.exit(1)
+        if values and values != "-":
+            try:
+                sys.stdout = open(values, 'w')
+            except:
+                sys.stderr.write(traceback.format_exc())
+                sys.exit(1)
         setattr(namespace, self.dest, values)
 
 
@@ -146,14 +145,10 @@ object_dict = {
 }
 
 def generate_custom_usage(usage_text, usage_dict):
-    # generate custom usage from given text and dictionary
-    sorted_keys = []
-    for i in usage_dict.keys():
-        sorted_keys.append(i)
-    sorted_keys.sort()
+    sorted_keys = sorted(usage_dict.keys())
     for k in sorted_keys:
-        usage_text += "%s %s |" % (k, (" ".join(usage_dict[k])))
-    usage_text = usage_text[:-1] + "]"
+        usage_text += f'{k} {" ".join(usage_dict[k])} |'
+    usage_text = f"{usage_text[:-1]}]"
     usage_text = _(usage_text)
 
     return usage_text
@@ -167,7 +162,7 @@ def handle_opts(args, dict, target_key):
     for k in args.__dict__.keys():
         try:
             if k in dict[target_key][0] and args.__dict__[k]:
-                print("%s option can not be used with --%s" % (target_key, k))
+                print(f"{target_key} option can not be used with --{k}")
                 sys.exit(2)
         except KeyError:
             continue
@@ -175,7 +170,7 @@ def handle_opts(args, dict, target_key):
     for k in args.__dict__.keys():
         try:
             if k in dict[target_key][1] and not args.__dict__[k]:
-                print("%s option is needed for %s" % (k, target_key))
+                print(f"{k} option is needed for {target_key}")
                 sys.exit(2)
         except KeyError:
             continue
@@ -201,7 +196,7 @@ def handleLogin(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("login %s" % (str(i)))
+            print(f"login {str(i)}")
 
 
 def parser_add_store(parser, name):
@@ -343,7 +338,7 @@ def handleFcontext(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("fcontext %s" % str(i))
+            print(f"fcontext {str(i)}")
 
 
 def setupFcontextParser(subparsers):
@@ -402,7 +397,7 @@ def handleUser(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("user %s" % str(i))
+            print(f"user {str(i)}")
 
 
 def setupUserParser(subparsers):
@@ -452,7 +447,7 @@ def handlePort(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("port %s" % str(i))
+            print(f"port {str(i)}")
 
 
 def setupPortParser(subparsers):
@@ -497,7 +492,7 @@ def handlePkey(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("ibpkey %s" % str(i))
+            print(f"ibpkey {str(i)}")
 
 
 def setupPkeyParser(subparsers):
@@ -540,7 +535,7 @@ def handleIbendport(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("ibendport %s" % str(i))
+            print(f"ibendport {str(i)}")
 
 
 def setupIbendportParser(subparsers):
@@ -583,7 +578,7 @@ def handleInterface(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("interface %s" % str(i))
+            print(f"interface {str(i)}")
 
 
 def setupInterfaceParser(subparsers):
@@ -623,7 +618,7 @@ def handleModule(args):
         OBJECT.list(args.noheading, args.locallist)
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("module %s" % str(i))
+            print(f"module {str(i)}")
 
 
 def setupModuleParser(subparsers):
@@ -663,7 +658,7 @@ def handleNode(args):
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("node %s" % str(i))
+            print(f"node {str(i)}")
 
 
 def setupNodeParser(subparsers):
@@ -697,16 +692,15 @@ def handleBoolean(args):
 
     OBJECT = object_dict['boolean'](args)
 
-    if args.action == "modify":
-        if args.boolean:
-            OBJECT.modify(args.boolean, args.state, False)
+    if args.action == "modify" and args.boolean:
+        OBJECT.modify(args.boolean, args.state, False)
     if args.action == "list":
         OBJECT.list(args.noheading, args.locallist)
     if args.action == "deleteall":
         OBJECT.deleteall()
     if args.action == "extract":
         for i in OBJECT.customized():
-            print("boolean %s" % str(i))
+            print(f"boolean {str(i)}")
 
 
 def setupBooleanParser(subparsers):
@@ -741,7 +735,7 @@ def handlePermissive(args):
         OBJECT.deleteall()
     elif args.action == "extract":
         for i in OBJECT.customized():
-            print("permissive %s" % str(i))
+            print(f"permissive {str(i)}")
     elif args.type is not None:
         if args.action == "add":
             OBJECT.add(args.type)
@@ -785,11 +779,11 @@ def setupDontauditParser(subparsers):
 def handleExport(args):
     manageditems = ["boolean", "login", "interface", "user", "port", "node", "fcontext", "module", "ibendport", "ibpkey", "permissive"]
     for i in manageditems:
-        print("%s -D" % i)
+        print(f"{i} -D")
     for i in manageditems:
         OBJECT = object_dict[i](args)
         for c in OBJECT.customized():
-            print("%s %s" % (i, str(c)))
+            print(f"{i} {str(c)}")
 
     sys.exit(0)
 
@@ -811,39 +805,39 @@ def mkargv(line):
         cnt = len(re.findall(dquote, l[i]))
         if cnt > 1:
             ret.append(l[i].strip(dquote))
-            i = i + 1
+            i += 1
             continue
         if cnt == 1:
             quote = [l[i].strip(dquote)]
-            i = i + 1
+            i += 1
 
             while i < len(l) and dquote not in l[i]:
                 quote.append(l[i])
-                i = i + 1
+                i += 1
             quote.append(l[i].strip(dquote))
             ret.append(" ".join(quote))
-            i = i + 1
+            i += 1
             continue
 
         cnt = len(re.findall(squote, l[i]))
         if cnt > 1:
             ret.append(l[i].strip(squote))
-            i = i + 1
+            i += 1
             continue
         if cnt == 1:
             quote = [l[i].strip(squote)]
-            i = i + 1
+            i += 1
             while i < len(l) and squote not in l[i]:
                 quote.append(l[i])
-                i = i + 1
+                i += 1
 
             quote.append(l[i].strip(squote))
             ret.append(" ".join(quote))
-            i = i + 1
+            i += 1
             continue
 
         ret.append(l[i])
-        i = i + 1
+        i += 1
 
     return ret
 
@@ -933,11 +927,9 @@ def make_io_args(args):
 def make_args(sys_args):
     args = []
     if "-o" in sys_args[1:] or "-i" in sys_args[1:]:
-        args = make_io_args(sys_args[1:])
+        return make_io_args(sys_args[1:])
     else:
-        args = sys_args[1:]
-
-    return args
+        return sys_args[1:]
 
 
 def do_parser():
@@ -946,20 +938,12 @@ def do_parser():
         args = commandParser.parse_args(make_args(sys.argv))
         args.func(args)
         sys.exit(0)
-    except BrokenPipeError as e:
+    except (BrokenPipeError, IOError, KeyboardInterrupt, ValueError) as e:
         sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
         # Python flushes standard streams on exit; redirect remaining output
         # to devnull to avoid another BrokenPipeError at shutdown
         devnull = os.open(os.devnull, os.O_WRONLY)
         os.dup2(devnull, sys.stdout.fileno())
-        sys.exit(1)
-    except IOError as e:
-        sys.stderr.write("%s: %s\n" % (e.__class__.__name__, str(e)))
-        sys.exit(1)
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except ValueError as e:
-        sys.stderr.write("%s: %s\n" % (e.__class__.__name__, e.args[0]))
         sys.exit(1)
     except KeyError as e:
         sys.stderr.write("%s: %s\n" % (e.__class__.__name__, e.args[0]))

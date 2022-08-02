@@ -24,7 +24,7 @@ import re
 # path variable (optionally read from a configuration file)
 class PathChooser(object):
     def __init__(self, pathname):
-        self.config = dict()
+        self.config = {}
         if not os.path.exists(pathname):
             self.config_pathname = "(defaults)"
             self.config["SELINUX_DEVEL_PATH"] = "/usr/share/selinux/default:/usr/share/selinux/mls:/usr/share/selinux/devel"
@@ -35,16 +35,16 @@ class PathChooser(object):
         with open(pathname, "r") as fd:
             for lineno, line in enumerate(fd):
                 if ignore.match(line): continue
-                mo = consider.match(line)
-                if not mo:
+                if mo := consider.match(line):
+                    self.config[mo[1]] = mo[2]
+                else:
                     raise ValueError("%s:%d: line is not in key = value format" % (pathname, lineno+1))
-                self.config[mo.group(1)] = mo.group(2)
 
     # We're only exporting one useful function, so why not be a function
     def __call__(self, testfilename, pathset="SELINUX_DEVEL_PATH"):
         paths = self.config.get(pathset, None)
         if paths is None:
-            raise ValueError("%s was not in %s" % (pathset, self.config_pathname))
+            raise ValueError(f"{pathset} was not in {self.config_pathname}")
         paths = paths.split(":")
         for p in paths:
             target = os.path.join(p, testfilename)
@@ -60,13 +60,13 @@ def data_dir():
     return "/var/lib/sepolgen"
 
 def perm_map():
-    return data_dir() + "/perm_map"
+    return f"{data_dir()}/perm_map"
 
 def interface_info():
-    return data_dir() + "/interface_info"
+    return f"{data_dir()}/interface_info"
 
 def attribute_info():
-    return data_dir() + "/attribute_info"
+    return f"{data_dir()}/attribute_info"
 
 def refpolicy_makefile():
     chooser = PathChooser("/etc/selinux/sepolgen.conf")

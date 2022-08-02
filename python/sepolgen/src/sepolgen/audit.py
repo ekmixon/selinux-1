@@ -98,12 +98,11 @@ class AuditMessage:
         for msg in recs:
             fields = msg.split("=")
             if len(fields) != 2:
-                if msg[:6] == "audit(":
-                    self.header = msg
-                    return
-                else:
+                if msg[:6] != "audit(":
                     continue
-            
+
+                self.header = msg
+                return
             if fields[0] == "msg":
                 self.header = fields[1]
                 return
@@ -212,7 +211,7 @@ class AVCMessage(AuditMessage):
         found_tgt = False
         found_class = False
         found_access = False
-        
+
         for i in range(len(recs)):
             if recs[i] == "{":
                 i = self.__parse_access(recs, i + 1)
@@ -220,7 +219,7 @@ class AVCMessage(AuditMessage):
                 continue
             elif recs[i] == "granted":
                 self.denial = False
-            
+
             fields = recs[i].split("=")
             if len(fields) != 2:
                 continue
@@ -265,8 +264,6 @@ class AVCMessage(AuditMessage):
                 raise ValueError("Invalid Target Context %s\n" % tcontext)
             if self.type == audit2why.BADSCON:
                 raise ValueError("Invalid Source Context %s\n" % scontext)
-            if self.type == audit2why.BADSCON:
-                raise ValueError("Invalid Type Class %s\n" % self.tclass)
             if self.type == audit2why.BADPERM:
                 raise ValueError("Invalid permission %s\n" % " ".join(self.accesses))
             if self.type == audit2why.BADCOMPUTE:
@@ -275,11 +272,29 @@ class AVCMessage(AuditMessage):
             if self.type == audit2why.CONSTRAINT:
                 self.data = [ self.data ]
                 if self.scontext.user != self.tcontext.user:
-                    self.data.append(("user (%s)" % self.scontext.user, 'user (%s)' % self.tcontext.user))
-                if self.scontext.role != self.tcontext.role and self.tcontext.role != "object_r":
-                    self.data.append(("role (%s)" % self.scontext.role, 'role (%s)' % self.tcontext.role))
+                    self.data.append(
+                        (
+                            f"user ({self.scontext.user})",
+                            f'user ({self.tcontext.user})',
+                        )
+                    )
+
+                if self.scontext.role != self.tcontext.role != "object_r":
+                    self.data.append(
+                        (
+                            f"role ({self.scontext.role})",
+                            f'role ({self.tcontext.role})',
+                        )
+                    )
+
                 if self.scontext.level != self.tcontext.level:
-                    self.data.append(("level (%s)" % self.scontext.level, 'level (%s)' % self.tcontext.level))
+                    self.data.append(
+                        (
+                            f"level ({self.scontext.level})",
+                            f'level ({self.tcontext.level})',
+                        )
+                    )
+
 
             avcdict[(scontext, tcontext, self.tclass, access_tuple)] = (self.type, self.data)
 
@@ -388,13 +403,13 @@ class AuditParser:
         rec = [x.strip("\x1c\x1d\x1e\x85") for x in line.split()]
         for i in rec:
             found = False
-            if i == "avc:" or i == "message=avc:" or i == "msg='avc:":
+            if i in ["avc:", "message=avc:", "msg='avc:"]:
                 msg = AVCMessage(line)
                 found = True
             elif i == "security_compute_sid:":
                 msg = ComputeSidMessage(line)
                 found = True
-            elif i == "type=MAC_POLICY_LOAD" or i == "type=1403":
+            elif i in ["type=MAC_POLICY_LOAD", "type=1403"]:
                 msg = PolicyLoadMessage(line)
                 found = True
             elif i == "type=AVC_PATH":
@@ -403,7 +418,7 @@ class AuditParser:
             elif i == "type=DAEMON_START":
                 msg = DaemonStartMessage(list)
                 found = True
-                
+
             if found:
                 self.check_input_file = True
                 try:
@@ -464,17 +479,15 @@ class AuditParser:
                     path = msg
                 elif isinstance(msg, AVCMessage):
                     avc.append(msg)
-            if len(avc) > 0 and path:
+            if avc and path:
                 for a in avc:
                     a.path = path.path
 
     def parse_file(self, input):
         """Parse the contents of a file object. This method can be called
         multiple times (along with parse_string)."""
-        line = input.readline()
-        while line:
+        while line := input.readline():
             self.__parse(line)
-            line = input.readline()
         if not self.check_input_file:
             sys.stderr.write("Nothing to do\n")
             sys.exit(0)
@@ -552,9 +565,7 @@ class AVCTypeFilter:
     def filter(self, avc):
         if self.regex.match(avc.scontext.type):
             return True
-        if self.regex.match(avc.tcontext.type):
-            return True
-        return False
+        return bool(self.regex.match(avc.tcontext.type))
 
 class ComputeSidTypeFilter:
     def __init__(self, regex):
@@ -565,8 +576,6 @@ class ComputeSidTypeFilter:
             return True
         if self.regex.match(avc.scontext.type):
             return True
-        if self.regex.match(avc.tcontext.type):
-            return True
-        return False
+        return bool(self.regex.match(avc.tcontext.type))
 
 

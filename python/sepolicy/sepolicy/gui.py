@@ -59,22 +59,18 @@ except:
         import __builtin__
         __builtin__.__dict__['_'] = unicode
 
-reverse_file_type_str = {}
-for f in sepolicy.file_type_str:
-    reverse_file_type_str[sepolicy.file_type_str[f]] = f
+reverse_file_type_str = {
+    sepolicy.file_type_str[f]: f for f in sepolicy.file_type_str
+}
 
 enabled = [_("No"), _("Yes")]
 action = [_("Disable"), _("Enable")]
 
 
 def cmp(a, b):
-    if a is None and b is None:
-        return 0
     if a is None:
-        return -1
-    if b is None:
-        return 1
-    return (a > b) - (a < b)
+        return 0 if b is None else -1
+    return 1 if b is None else (a > b) - (a < b)
 
 import distutils.sysconfig
 ADVANCED_LABEL = (_("Advanced >>"), _("Advanced <<"))

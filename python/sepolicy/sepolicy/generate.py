@@ -72,7 +72,7 @@ def get_rpm_nvr_from_header(hdr):
     name = hdr['name']
     version = hdr['version']
     release = hdr['release']
-    release_version = version + "-" + release.split(".")[0]
+    release_version = f"{version}-" + release.split(".")[0]
     os_version = release.split(".")[1]
 
     return [name, release_version, os_version]
@@ -88,7 +88,7 @@ def get_rpm_nvr_list(package):
             nvr = get_rpm_nvr_from_header(h)
             break
     except:
-        print(("Failed to retrieve rpm info for %s") % package)
+        print(f"Failed to retrieve rpm info for {package}")
         nvr = None
 
     return nvr
@@ -97,9 +97,7 @@ def get_rpm_nvr_list(package):
 def get_all_ports():
     dict = {}
     for p in sepolicy.info(sepolicy.PORT):
-        if p['type'] == "reserved_port_t" or \
-                p['type'] == "port_t" or \
-                p['type'] == "hi_reserved_port_t":
+        if p['type'] in ["reserved_port_t", "port_t", "hi_reserved_port_t"]:
             continue
         dict[(p['low'], p['high'], p['protocol'])] = (p['type'], p.get('range'))
     return dict
@@ -133,8 +131,7 @@ AUSER = 10
 RUSER = 11
 NEWTYPE = 12
 
-poltype = {}
-poltype[DAEMON] = _("Standard Init Daemon")
+poltype = {DAEMON: _("Standard Init Daemon")}
 poltype[DBUS] = _("DBUS System Daemon")
 poltype[INETD] = _("Internet Services Daemon")
 poltype[CGI] = _("Web Application/Script (CGI)")
@@ -171,11 +168,10 @@ def verify_ports(ports):
             r = a.split("-")
             if len(r) > 2:
                 raise ValueError
+            begin = int(r[0])
             if len(r) == 1:
-                begin = int(r[0])
                 end = int(r[0])
             else:
-                begin = int(r[0])
                 end = int(r[1])
 
                 if begin > end:

@@ -189,11 +189,7 @@ def compare_avsets(l, avs_b):
         return False
 
 
-    for av_a, av_b in zip(a, b):
-        if av_a != av_b:
-            return False
-
-    return True
+    return all(av_a == av_b for av_a, av_b in zip(a, b))
         
 
 class TestInterfaceSet(unittest.TestCase):
@@ -261,23 +257,20 @@ class TestInterfaceSet(unittest.TestCase):
         h = refparser.parse(interface_example)
         i = interfaces.InterfaceSet()
         i.add_headers(h)
-        f = open("output", "w")
-        i.to_file(f)
-        f.close()
-
+        with open("output", "w") as f:
+            i.to_file(f)
         i2 = interfaces.InterfaceSet()
-        f = open("output")
-        i2.from_file(f)
-        f.close()
+        with open("output") as f:
+            i2.from_file(f)
         if_status = [False, False, False]
         for ifv in i2.interfaces.values():
-            if ifv.name == "files_search_usr":
-                if_status[0] = True
-            if ifv.name == "files_list_usr":
-                if_status[1] = True
             if ifv.name == "files_exec_usr_files":
                 if_status[2] = True
 
+            elif ifv.name == "files_list_usr":
+                if_status[1] = True
+            elif ifv.name == "files_search_usr":
+                if_status[0] = True
         self.assertEqual(if_status[0], True)
         self.assertEqual(if_status[1], True)
         self.assertEqual(if_status[2], True)

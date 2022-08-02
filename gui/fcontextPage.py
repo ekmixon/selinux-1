@@ -36,10 +36,7 @@ class context:
         self.scontext = scontext
         con = scontext.split(":")
         self.type = con[0]
-        if len(con) > 1:
-            self.mls = con[1]
-        else:
-            self.mls = "s0"
+        self.mls = con[1] if len(con) > 1 else "s0"
 
     def __str__(self):
         return self.scontext
@@ -139,7 +136,7 @@ class fcontextPage(semanagePage):
             self.store.set_value(iter, SPEC_COL, k[0])
             self.store.set_value(iter, FTYPE_COL, k[1])
             if fcon_dict[k]:
-                rec = "%s:%s" % (fcon_dict[k][2], seobject.translate(fcon_dict[k][3], False))
+                rec = f"{fcon_dict[k][2]}:{seobject.translate(fcon_dict[k][3], False)}"
             else:
                 rec = "<<None>>"
             self.store.set_value(iter, TYPE_COL, rec)
@@ -208,7 +205,7 @@ class fcontextPage(semanagePage):
         iter = self.store.append()
         self.store.set_value(iter, SPEC_COL, fspec)
         self.store.set_value(iter, FTYPE_COL, ftype)
-        self.store.set_value(iter, TYPE_COL, "%s:%s" % (type, mls))
+        self.store.set_value(iter, TYPE_COL, f"{type}:{mls}")
 
     def modify(self):
         fspec = self.fcontextEntry.get_text().strip()
@@ -227,4 +224,4 @@ class fcontextPage(semanagePage):
         store, iter = self.view.get_selection().get_selected()
         self.store.set_value(iter, SPEC_COL, fspec)
         self.store.set_value(iter, FTYPE_COL, ftype)
-        self.store.set_value(iter, TYPE_COL, "%s:%s" % (type, mls))
+        self.store.set_value(iter, TYPE_COL, f"{type}:{mls}")

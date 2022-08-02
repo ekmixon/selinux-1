@@ -76,8 +76,6 @@ __tabversion__ = '3.10'
 #-----------------------------------------------------------------------------
 
 yaccdebug   = True             # Debugging mode.  If set, yacc generates a
-                               # a 'parser.out' file in the current directory
-
 debug_file  = 'parser.out'     # Default name of the debugging file
 tab_module  = 'parsetab'       # Default name of the table module
 default_lr  = 'LALR'           # Default LR table generation method
@@ -85,18 +83,12 @@ default_lr  = 'LALR'           # Default LR table generation method
 error_count = 3                # Number of symbols that must be shifted to leave recovery mode
 
 yaccdevel   = False            # Set to True if developing yacc.  This turns off optimized
-                               # implementations of certain functions.
-
 resultlimit = 40               # Size limit of results when running in debug mode.
 
 pickle_protocol = 0            # Protocol to use when writing pickle files
 
 # String type-checking compatibility
-if sys.version_info[0] < 3:
-    string_types = basestring
-else:
-    string_types = str
-
+string_types = basestring if sys.version_info[0] < 3 else str
 MAXINT = sys.maxsize
 
 # This object is a stand-in for a logging object created by the
@@ -140,9 +132,8 @@ def format_result(r):
     if '\n' in repr_str:
         repr_str = repr(repr_str)
     if len(repr_str) > resultlimit:
-        repr_str = repr_str[:resultlimit] + ' ...'
-    result = '<%s @ 0x%x> (%s)' % (type(r).__name__, id(r), repr_str)
-    return result
+        repr_str = f'{repr_str[:resultlimit]} ...'
+    return '<%s @ 0x%x> (%s)' % (type(r).__name__, id(r), repr_str)
 
 # Format stack entries when the parser is running in debug mode
 def format_stack_entry(r):

@@ -4,8 +4,7 @@ from sepolicy.sedbus import SELinuxDBus
 
 
 def convert_customization(buf):
-    cust_dict = {}
-    cust_dict["fcontext-equiv"] = {}
+    cust_dict = {"fcontext-equiv": {}}
     for i in buf.split("\n"):
         rec = i.split()
         if len(rec) == 0:

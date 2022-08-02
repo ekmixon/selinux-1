@@ -104,21 +104,19 @@ class selinux_server(dbus.service.Object):
                 pass
 
     def write_selinux_config(self, enforcing=None, policy=None):
-        path = selinux.selinux_path() + "config"
-        backup_path = path + ".bck"
-        fd = open(path)
-        lines = fd.readlines()
-        fd.close()
-        fd = open(backup_path, "w")
-        for l in lines:
-            if enforcing and l.startswith("SELINUX="):
-                fd.write("SELINUX=%s\n" % enforcing)
-                continue
-            if policy and l.startswith("SELINUXTYPE="):
-                fd.write("SELINUXTYPE=%s\n" % policy)
-                continue
-            fd.write(l)
-        fd.close()
+        path = f"{selinux.selinux_path()}config"
+        backup_path = f"{path}.bck"
+        with open(path) as fd:
+            lines = fd.readlines()
+        with open(backup_path, "w") as fd:
+            for l in lines:
+                if enforcing and l.startswith("SELINUX="):
+                    fd.write("SELINUX=%s\n" % enforcing)
+                    continue
+                if policy and l.startswith("SELINUXTYPE="):
+                    fd.write("SELINUXTYPE=%s\n" % policy)
+                    continue
+                fd.write(l)
         os.rename(backup_path, path)
 
     #
@@ -130,7 +128,7 @@ class selinux_server(dbus.service.Object):
             raise dbus.exceptions.DBusException("Not authorized")
         values = ["enforcing", "permissive", "disabled"]
         if value not in values:
-            raise ValueError("Enforcement mode must be %s" % ", ".join(values))
+            raise ValueError(f'Enforcement mode must be {", ".join(values)}')
         self.write_selinux_config(enforcing=value)
 
     #
@@ -143,7 +141,7 @@ class selinux_server(dbus.service.Object):
         path = selinux.selinux_path() + value
         if os.path.isdir(path):
             return self.write_selinux_config(policy=value)
-        raise ValueError("%s does not exist" % path)
+        raise ValueError(f"{path} does not exist")
 
 if __name__ == "__main__":
     DBusGMainLoop(set_as_default=True)

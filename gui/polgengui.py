@@ -52,8 +52,7 @@ def get_all_modules():
         rc, output = getstatusoutput("semodule -l 2>/dev/null")
         if rc == 0:
             l = output.split("\n")
-            for i in l:
-                all_modules.append(i.split()[0])
+            all_modules.extend(i.split()[0] for i in l)
     except:
         pass
 

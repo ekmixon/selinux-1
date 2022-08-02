@@ -32,7 +32,7 @@ def expand_attribute(attribute):
 def get_types(src, tclass, perm):
     allows = sepolicy.search([sepolicy.ALLOW], {sepolicy.SOURCE: src, sepolicy.CLASS: tclass, sepolicy.PERMS: perm})
     if not allows:
-        raise TypeError("The %s type is not allowed to %s any types" % (src, ",".join(perm)))
+        raise TypeError(f'The {src} type is not allowed to {",".join(perm)} any types')
 
     tlist = []
     for l in map(lambda y: y[sepolicy.TARGET], filter(lambda x: set(perm).issubset(x[sepolicy.PERMS]), allows)):

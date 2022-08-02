@@ -30,8 +30,12 @@ def _entrypoint(src):
 
 def _get_trans(src):
     src_list = [src] + list(filter(lambda x: x['name'] == src, sepolicy.get_all_types_info()))[0]['attributes']
-    trans_list = list(filter(lambda x: x['source'] in src_list and x['class'] == 'process', sepolicy.get_all_transitions()))
-    return trans_list
+    return list(
+        filter(
+            lambda x: x['source'] in src_list and x['class'] == 'process',
+            sepolicy.get_all_transitions(),
+        )
+    )
 
 
 class setrans:
@@ -67,15 +71,16 @@ class setrans:
 
         if "map" in self.sdict[name]:
             for t in self.sdict[name]["map"]:
-                cond = sepolicy.get_conditionals(t["source"], t["transtype"], "process", ["transition"])
-                if cond:
+                if cond := sepolicy.get_conditionals(
+                    t["source"], t["transtype"], "process", ["transition"]
+                ):
                     buf += "%s%s @ %s --> %s %s\n" % (header, t["source"], t["target"], t["transtype"], sepolicy.get_conditionals_format_text(cond))
                 else:
                     buf += "%s%s @ %s --> %s\n" % (header, t["source"], t["target"], t["transtype"])
 
         if "child" in self.sdict[name]:
             for x in self.sdict[name]["child"]:
-                buf += self.out(x, "%s%s ... " % (header, name))
+                buf += self.out(x, f"{header}{name} ... ")
         return buf
 
     def output(self):

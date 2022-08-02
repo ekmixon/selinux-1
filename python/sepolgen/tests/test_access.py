@@ -258,8 +258,8 @@ class TestUtilFunctions(unittest.TestCase):
             self.assertEqual(av.perms, refpolicy.IdSet(["read", "write"]))
             for i in range(len(comps)):
                 if comps[i][0] == av.src_type and \
-                   comps[i][1] == av.tgt_type and \
-                   comps[i][2] == av.obj_class:
+                       comps[i][1] == av.tgt_type and \
+                       comps[i][2] == av.obj_class:
                     status[i] = True
 
         for s in status:
@@ -301,8 +301,8 @@ class TestAccessVectorSet(unittest.TestCase):
             self.assertEqual(av.perms, refpolicy.IdSet(["read", "write"]))
             for i in range(len(comps)):
                 if comps[i][0] == av.src_type and \
-                   comps[i][1] == av.tgt_type and \
-                   comps[i][2] == av.obj_class:
+                       comps[i][1] == av.tgt_type and \
+                       comps[i][2] == av.obj_class:
                     status[i] = True
 
         for s in status:

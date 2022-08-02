@@ -69,7 +69,7 @@ class statusPage:
         self.relabel_checkbutton = xml.get_object("relabelCheckbutton")
         self.relabel_checkbutton.set_active(self.is_relabel())
         self.relabel_checkbutton.connect("toggled", self.on_relabel_toggle)
-        if self.get_current_mode() == ENFORCING or self.get_current_mode() == PERMISSIVE:
+        if self.get_current_mode() in [ENFORCING, PERMISSIVE]:
             self.currentOptionMenu.append_text(_("Permissive"))
             self.currentOptionMenu.append_text(_("Enforcing"))
             self.currentOptionMenu.set_active(self.get_current_mode())
@@ -99,10 +99,7 @@ class statusPage:
 
     def get_current_mode(self):
         if selinux.is_selinux_enabled():
-            if selinux.security_getenforce() > 0:
-                return ENFORCING
-            else:
-                return PERMISSIVE
+            return ENFORCING if selinux.security_getenforce() > 0 else PERMISSIVE
         else:
             return DISABLED
 
@@ -116,9 +113,8 @@ class statusPage:
         if button.get_active():
             fd = open(RELABELFILE, "w")
             fd.close()
-        else:
-            if os.access(RELABELFILE, os.F_OK) != 0:
-                os.unlink(RELABELFILE)
+        elif os.access(RELABELFILE, os.F_OK) != 0:
+            os.unlink(RELABELFILE)
 
     def verify(self, message):
         dlg = Gtk.MessageDialog(None, 0, Gtk.MessageType.INFO,
@@ -147,10 +143,18 @@ class statusPage:
         enabled = combo.get_active()
         type = self.get_type()
 
-        if self.initEnabled != DISABLED and enabled == DISABLED:
-            if self.verify(_("Changing to SELinux disabled requires a reboot.  It is not recommended.  If you later decide to turn SELinux back on, the system will be required to relabel.  If you just want to see if SELinux is causing a problem on your system, you can go to permissive mode which will only log errors and not enforce SELinux policy.  Permissive mode does not require a reboot    Do you wish to continue?")) == Gtk.ResponseType.NO:
-                combo.set_active(self.enabled)
-                return None
+        if (
+            self.initEnabled != DISABLED
+            and enabled == DISABLED
+            and self.verify(
+                _(
+                    "Changing to SELinux disabled requires a reboot.  It is not recommended.  If you later decide to turn SELinux back on, the system will be required to relabel.  If you just want to see if SELinux is causing a problem on your system, you can go to permissive mode which will only log errors and not enforce SELinux policy.  Permissive mode does not require a reboot    Do you wish to continue?"
+                )
+            )
+            == Gtk.ResponseType.NO
+        ):
+            combo.set_active(self.enabled)
+            return None
 
         if self.initEnabled == DISABLED and enabled < 2:
             if self.verify(_("Changing to SELinux enabled will cause a relabel of the entire file system on the next boot. Relabeling takes a long time depending on the size of the file system.  Do you wish to continue?")) == Gtk.ResponseType.NO:
@@ -162,21 +166,19 @@ class statusPage:
         self.enabled = enabled
 
     def write_selinux_config(self, enforcing, type):
-        path = selinux.selinux_path() + "config"
-        backup_path = path + ".bck"
-        fd = open(path)
-        lines = fd.readlines()
-        fd.close()
-        fd = open(backup_path, "w")
-        for l in lines:
-            if l.startswith("SELINUX="):
-                fd.write("SELINUX=%s\n" % enforcing)
-                continue
-            if l.startswith("SELINUXTYPE="):
-                fd.write("SELINUXTYPE=%s\n" % type)
-                continue
-            fd.write(l)
-        fd.close()
+        path = f"{selinux.selinux_path()}config"
+        backup_path = f"{path}.bck"
+        with open(path) as fd:
+            lines = fd.readlines()
+        with open(backup_path, "w") as fd:
+            for l in lines:
+                if l.startswith("SELINUX="):
+                    fd.write("SELINUX=%s\n" % enforcing)
+                    continue
+                if l.startswith("SELINUXTYPE="):
+                    fd.write("SELINUXTYPE=%s\n" % type)
+                    continue
+                fd.write(l)
         os.rename(backup_path, path)
 
     def read_selinux_config(self):
@@ -185,7 +187,6 @@ class statusPage:
             self.initEnabled = selinux.selinux_getenforcemode()[1]
         except:
             self.initEnabled = False
-            pass
         self.enabled = self.initEnabled
         self.enabledOptionMenu.set_active(self.enabled + 1)
 

@@ -138,11 +138,11 @@ class usersPage(semanagePage):
         store, iter = self.view.get_selection().get_selected()
         try:
             user = store.get_value(iter, 0)
-            if user == "root" or user == "user_u":
+            if user in ["root", "user_u"]:
                 raise ValueError(_("SELinux user '%s' is required") % user)
 
             self.wait()
-            (rc, out) = getstatusoutput("semanage user -d %s" % user)
+            (rc, out) = getstatusoutput(f"semanage user -d {user}")
             self.ready()
             if rc != 0:
                 self.error(out)

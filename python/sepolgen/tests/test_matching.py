@@ -139,6 +139,3 @@ class AccessMatcher(unittest.TestCase):
         ml = matching.MatchList()
 
         ans = m.search_ifs(i, a, ml)
-                
-        
-        pass

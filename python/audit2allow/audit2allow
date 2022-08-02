@@ -104,13 +104,7 @@ class AuditToPolicy:
         if options.input is not None and options.dmesg is True:
             sys.stderr.write("error: --input conflicts with --dmesg\n")
 
-        # Turn on requires generation if a module name is given. Also verify
-        # the module name.
-        if options.module:
-            name = options.module
-        else:
-            name = options.module_package
-        if name:
+        if name := options.module or options.module_package:
             options.requires = True
             if not module.is_valid_name(name):
                 sys.stderr.write('error: module names must begin with a letter, optionally followed by letters, numbers, "-", "_", "."\n')
@@ -184,10 +178,7 @@ class AuditToPolicy:
 
     def __load_interface_info(self):
         # Load interface info file
-        if self.__options.interface_info:
-            fn = self.__options.interface_info
-        else:
-            fn = defaults.interface_info()
+        fn = self.__options.interface_info or defaults.interface_info()
         try:
             fd = open(fn)
         except:
@@ -199,10 +190,7 @@ class AuditToPolicy:
         fd.close()
 
         # Also load perm maps
-        if self.__options.perm_map:
-            fn = self.__options.perm_map
-        else:
-            fn = defaults.perm_map()
+        fn = self.__options.perm_map or defaults.perm_map()
         try:
             fd = open(fn)
         except:
@@ -216,8 +204,8 @@ class AuditToPolicy:
 
     def __output_modulepackage(self, writer, generator):
         generator.set_module_name(self.__options.module_package)
-        filename = self.__options.module_package + ".te"
-        packagename = self.__options.module_package + ".pp"
+        filename = f"{self.__options.module_package}.te"
+        packagename = f"{self.__options.module_package}.pp"
 
         try:
             fd = open(filename, "w")
@@ -350,10 +338,7 @@ class AuditToPolicy:
             if self.__options.module:
                 g.set_module_name(self.__options.module)
 
-            if self.__options.output:
-                fd = open(self.__options.output, "a")
-            else:
-                fd = sys.stdout
+            fd = open(self.__options.output, "a") if self.__options.output else sys.stdout
             writer.write(g.get_module(), fd)
 
     def main(self):

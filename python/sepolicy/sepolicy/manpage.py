@@ -56,7 +56,7 @@ def gen_modules_dict(path="/usr/share/selinux/devel/policy.xml"):
         for l in tree.findall("layer"):
             for m in l.findall("module"):
                 name = m.get("name")
-                if name == "user" or name == "unconfined":
+                if name in ["user", "unconfined"]:
                     continue
                 if name == "unprivuser":
                     name = "user"
@@ -78,7 +78,6 @@ def get_all_users_info():
     if users and users_range:
         return users, users_range
 
-    users = []
     users_range = {}
     allusers = []
     allusers_info = sepolicy.info(sepolicy.USER)
@@ -88,9 +87,12 @@ def get_all_users_info():
         if 'range' in d:
             users_range[d['name'].split("_")[0]] = d['range']
 
-    for u in allusers:
-        if u not in ["system_u", "root", "unconfined_u"]:
-            users.append(u.replace("_u", ""))
+    users = [
+        u.replace("_u", "")
+        for u in allusers
+        if u not in ["system_u", "root", "unconfined_u"]
+    ]
+
     users.sort()
     return users, users_range
 
@@ -110,8 +112,8 @@ def gen_domains():
     if domains:
         return domains
     domains = []
+    found = False
     for d in sepolicy.get_all_domains():
-        found = False
         domain = d[:-2]
 #		if domain + "_exec_t" not in get_entrypoints():
 #			continue
@@ -158,11 +160,7 @@ rhel_releases = ["RHEL6", "RHEL7"]
 def get_alphabet_manpages(manpage_list):
     alphabet_manpages = dict.fromkeys(string.ascii_letters, [])
     for i in string.ascii_letters:
-        temp = []
-        for j in manpage_list:
-            if j.split("/")[-1][0] == i:
-                temp.append(j.split("/")[-1])
-
+        temp = [j.split("/")[-1] for j in manpage_list if j.split("/")[-1][0] == i]
         alphabet_manpages[i] = temp
 
     return alphabet_manpages
@@ -173,12 +171,14 @@ def convert_manpage_to_html(html_manpage, manpage):
         from commands import getstatusoutput
     except ImportError:
         from subprocess import getstatusoutput
-    rc, output = getstatusoutput("/usr/bin/groff -man -Thtml %s 2>/dev/null" % manpage)
+    rc, output = getstatusoutput(
+        f"/usr/bin/groff -man -Thtml {manpage} 2>/dev/null"
+    )
+
     if rc == 0:
         print(html_manpage, "has been created")
-        fd = open(html_manpage, 'w')
-        fd.write(output)
-        fd.close()
+        with open(html_manpage, 'w') as fd:
+            fd.write(output)
 
 
 class HTMLManPages:
@@ -191,13 +191,13 @@ class HTMLManPages:
         self.manpage_roles = get_alphabet_manpages(manpage_roles)
         self.manpage_domains = get_alphabet_manpages(manpage_domains)
         self.os_version = os_version
-        self.old_path = path + "/"
+        self.old_path = f"{path}/"
         self.new_path = self.old_path + self.os_version + "/"
 
         if self.os_version in fedora_releases or self.os_version in rhel_releases:
             self.__gen_html_manpages()
         else:
-            print("SELinux HTML man pages can not be generated for this %s" % os_version)
+            print(f"SELinux HTML man pages can not be generated for this {os_version}")
             exit(1)
 
     def __gen_html_manpages(self):
@@ -221,9 +221,9 @@ class HTMLManPages:
                     convert_manpage_to_html((self.new_path + r.rsplit("_selinux", 1)[0] + ".html"), self.old_path + r)
 
     def _gen_index(self):
-        index = self.old_path + "index.html"
-        fd = open(index, 'w')
-        fd.write("""
+        index = f"{self.old_path}index.html"
+        with open(index, 'w') as fd:
+            fd.write("""
 <html>
 <head>
     <link rel=stylesheet type="text/css" href="style.css" title="style">
@@ -242,11 +242,11 @@ Fedora or Red Hat Enterprise Linux Man Pages.</h2>
 </tr></table>
 <pre>
 """)
-        for f in fedora_releases:
-            fd.write("""
+            for f in fedora_releases:
+                fd.write("""
 <a href=%s/%s.html>%s</a> - SELinux man pages for %s """ % (f, f, f, f))
 
-        fd.write("""
+            fd.write("""
 </pre>
 <hr>
 <h3>RHEL</h3>
@@ -256,20 +256,19 @@ Fedora or Red Hat Enterprise Linux Man Pages.</h2>
 </tr></table>
 <pre>
 """)
-        for r in rhel_releases:
-            fd.write("""
+            for r in rhel_releases:
+                fd.write("""
 <a href=%s/%s.html>%s</a> - SELinux man pages for %s """ % (r, r, r, r))
 
-        fd.write("""
+            fd.write("""
 </pre>
 	""")
-        fd.close()
-        print("%s has been created" % index)
+        print(f"{index} has been created")
 
     def _gen_body(self):
         html = self.new_path + self.os_version + ".html"
-        fd = open(html, 'w')
-        fd.write("""
+        with open(html, 'w') as fd:
+            fd.write("""
 <html>
 <head>
 	<link rel=stylesheet type="text/css" href="../style.css" title="style">
@@ -282,65 +281,64 @@ Fedora or Red Hat Enterprise Linux Man Pages.</h2>
 <td valign="middle">
 <h3>SELinux roles</h3>
 """)
-        for letter in self.manpage_roles:
-            if len(self.manpage_roles[letter]):
-                fd.write("""
+            for letter in self.manpage_roles:
+                if len(self.manpage_roles[letter]):
+                    fd.write("""
 <a href=#%s_role>%s</a>"""
-                         % (letter, letter))
+                             % (letter, letter))
 
-        fd.write("""
+            fd.write("""
 </td>
 </tr></table>
 <pre>
 """)
-        rolename_body = ""
-        for letter in self.manpage_roles:
-            if len(self.manpage_roles[letter]):
-                rolename_body += "<p>"
-                for r in self.manpage_roles[letter]:
-                    rolename = r.rsplit("_selinux", 1)[0]
-                    rolename_body += "<a name=%s_role></a><a href=%s.html>%s_selinux(8)</a> - Security Enhanced Linux Policy for the %s SELinux user\n" % (letter, rolename, rolename, rolename)
+            rolename_body = ""
+            for letter in self.manpage_roles:
+                if len(self.manpage_roles[letter]):
+                    rolename_body += "<p>"
+                    for r in self.manpage_roles[letter]:
+                        rolename = r.rsplit("_selinux", 1)[0]
+                        rolename_body += "<a name=%s_role></a><a href=%s.html>%s_selinux(8)</a> - Security Enhanced Linux Policy for the %s SELinux user\n" % (letter, rolename, rolename, rolename)
 
-        fd.write("""%s
+            fd.write("""%s
 </pre>
 <hr>
 <table><tr>
 <td valign="middle">
 <h3>SELinux domains</h3>"""
-                 % rolename_body)
+                     % rolename_body)
 
-        for letter in self.manpage_domains:
-            if len(self.manpage_domains[letter]):
-                fd.write("""
+            for letter in self.manpage_domains:
+                if len(self.manpage_domains[letter]):
+                    fd.write("""
 <a href=#%s_domain>%s</a>
 			""" % (letter, letter))
 
-        fd.write("""
+            fd.write("""
 </td>
 </tr></table>
 <pre>
 """)
-        domainname_body = ""
-        for letter in self.manpage_domains:
-            if len(self.manpage_domains[letter]):
-                domainname_body += "<p>"
-                for r in self.manpage_domains[letter]:
-                    domainname = r.rsplit("_selinux", 1)[0]
-                    domainname_body += "<a name=%s_domain></a><a href=%s.html>%s_selinux(8)</a> - Security Enhanced Linux Policy for the %s SELinux processes\n" % (letter, domainname, domainname, domainname)
+            domainname_body = ""
+            for letter in self.manpage_domains:
+                if len(self.manpage_domains[letter]):
+                    domainname_body += "<p>"
+                    for r in self.manpage_domains[letter]:
+                        domainname = r.rsplit("_selinux", 1)[0]
+                        domainname_body += "<a name=%s_domain></a><a href=%s.html>%s_selinux(8)</a> - Security Enhanced Linux Policy for the %s SELinux processes\n" % (letter, domainname, domainname, domainname)
 
-        fd.write("""%s
+            fd.write("""%s
 </pre>
 </body>
 </html>
 """ % domainname_body)
 
-        fd.close()
-        print("%s has been created" % html)
+        print(f"{html} has been created")
 
     def _gen_css(self):
-        style_css = self.old_path + "style.css"
-        fd = open(style_css, 'w')
-        fd.write("""
+        style_css = f"{self.old_path}style.css"
+        with open(style_css, 'w') as fd:
+            fd.write("""
 html, body {
     background-color: #fcfcfc;
     font-family: arial, sans-serif;
@@ -397,8 +395,7 @@ pre.code {
 }
 """)
 
-        fd.close()
-        print("%s has been created" % style_css)
+        print(f"{style_css} has been created")
 
 
 class ManPage:
@@ -427,7 +424,7 @@ class ManPage:
         self.types = _gen_types()
 
         if self.source_files:
-            self.fcpath = self.root + "file_contexts"
+            self.fcpath = f"{self.root}file_contexts"
         else:
             self.fcpath = self.root + selinux.selinux_file_context_path()
 
@@ -439,18 +436,18 @@ class ManPage:
         self.path = path
 
         if self.source_files:
-            self.xmlpath = self.root + "policy.xml"
+            self.xmlpath = f"{self.root}policy.xml"
         else:
-            self.xmlpath = self.root + "/usr/share/selinux/devel/policy.xml"
+            self.xmlpath = f"{self.root}/usr/share/selinux/devel/policy.xml"
         self.booleans_dict = sepolicy.gen_bool_dict(self.xmlpath)
 
         self.domainname, self.short_name = sepolicy.gen_short_name(domainname)
 
-        self.type = self.domainname + "_t"
+        self.type = f"{self.domainname}_t"
         self._gen_bools()
-        self.man_page_path = "%s/%s_selinux.8" % (path, self.domainname)
+        self.man_page_path = f"{path}/{self.domainname}_selinux.8"
         self.fd = open(self.man_page_path, 'w')
-        if self.domainname + "_r" in self.all_roles:
+        if f"{self.domainname}_r" in self.all_roles:
             self.__gen_user_man_page()
             if self.html:
                 manpage_roles.append(self.man_page_path)
@@ -470,9 +467,11 @@ class ManPage:
         self.domainbools = []
         types = [self.type]
         if self.domainname in equiv_dict:
-            for t in equiv_dict[self.domainname]:
-                if t + "_t" in self.all_domains:
-                    types.append(t + "_t")
+            types.extend(
+                f"{t}_t"
+                for t in equiv_dict[self.domainname]
+                if f"{t}_t" in self.all_domains
+            )
 
         for t in types:
             domainbools, bools = sepolicy.get_bools(t)
@@ -486,14 +485,14 @@ class ManPage:
         return self.man_page_path
 
     def __gen_user_man_page(self):
-        self.role = self.domainname + "_r"
+        self.role = f"{self.domainname}_r"
         if not self.modules_dict:
             self.modules_dict = gen_modules_dict(self.xmlpath)
 
         try:
             self.desc = self.modules_dict[self.domainname]
         except:
-            self.desc = "%s user role" % self.domainname
+            self.desc = f"{self.domainname} user role"
 
         if self.domainname in self.all_users:
             self.attributes = next(sepolicy.info(sepolicy.TYPE, (self.type)))["attributes"]
@@ -517,9 +516,9 @@ class ManPage:
         self._footer()
 
     def __gen_man_page_link(self, alias):
-        path = "%s/%s_selinux.8" % (self.path, alias)
-        self.fd = open("%s/%s_selinux.8" % (self.path, alias), 'w')
-        self.fd.write(".so man8/%s_selinux.8" % self.domainname)
+        path = f"{self.path}/{alias}_selinux.8"
+        self.fd = open(f"{self.path}/{alias}_selinux.8", 'w')
+        self.fd.write(f".so man8/{self.domainname}_selinux.8")
         self.fd.close()
         print(path)
 
@@ -541,7 +540,10 @@ class ManPage:
                     self.man_page_path = man_page_path
             except KeyError:
                 continue
-            self.attributes[domain_type] = next(sepolicy.info(sepolicy.TYPE, ("%s") % domain_type))["attributes"]
+            self.attributes[domain_type] = next(
+                sepolicy.info(sepolicy.TYPE, f"{domain_type}")
+            )["attributes"]
+
 
         self._header()
         self._entrypoints()
@@ -561,7 +563,7 @@ class ManPage:
                 self.ptypes.append(f)
 
     def _typealias_gen_man(self, t):
-        self.man_page_path = "%s/%s_selinux.8" % (self.path, t[:-2])
+        self.man_page_path = f"{self.path}/{t[:-2]}_selinux.8"
         self.ports = []
         self.booltext = ""
         self.fd = open(self.man_page_path, 'w')
@@ -617,9 +619,7 @@ For example:
         for b, enabled in self.domainbools + self.bools:
             if b.endswith("anon_write") and b not in self.anon_list:
                 self.anon_list.append(b)
-            else:
-                if b not in self.booleans_dict:
-                    continue
+            elif b in self.booleans_dict:
                 booltext += """
 .PP
 If you want to %s, you must turn on the %s boolean. %s by default.
@@ -644,12 +644,13 @@ SELinux policy is customizable based on least access required.  %s policy is ext
             self.fd.write(self.booltext)
 
     def _nsswitch_domain(self):
-        nsswitch_types = []
         nsswitch_booleans = ['authlogin_nsswitch_use_ldap', 'kerberos_enabled']
         nsswitchbooltext = ""
-        for k in self.attributes.keys():
-            if "nsswitch_domain" in self.attributes[k]:
-                nsswitch_types.append(k)
+        nsswitch_types = [
+            k
+            for k in self.attributes.keys()
+            if "nsswitch_domain" in self.attributes[k]
+        ]
 
         if len(nsswitch_types):
             self.fd.write("""
@@ -693,12 +694,13 @@ can be used to make the process type %(domainname)s_t permissive. SELinux does n
 """ % {'domainname': self.domainname})
 
     def _port_types(self):
-        self.ports = []
-        for f in self.all_port_types:
-            if f.startswith(self.short_name) or f.startswith(self.domainname):
-                self.ports.append(f)
+        self.ports = [
+            f
+            for f in self.all_port_types
+            if f.startswith(self.short_name) or f.startswith(self.domainname)
+        ]
 
-        if len(self.ports) == 0:
+        if not self.ports:
             return
         self.fd.write("""
 .SH PORT TYPES
@@ -749,9 +751,9 @@ Default Defined Ports:""")
         mdirs = {}
         for mp in mpaths:
             found = False
-            for md in mdirs:
+            for md, value in mdirs.items():
                 if mp.startswith(md):
-                    mdirs[md].append(mp)
+                    value.append(mp)
                     found = True
                     break
             if not found:
@@ -760,11 +762,7 @@ Default Defined Ports:""")
                         mdirs[mp[:-6]] = []
                         break
 
-        equiv = []
-        for m in mdirs:
-            if len(mdirs[m]) > 0:
-                equiv.append(m)
-
+        equiv = [m for m, value_ in mdirs.items() if len(value_) > 0]
         self.fd.write(r"""
 .SH FILE CONTEXTS
 SELinux requires files to have an extended attribute to define the file type.
@@ -776,7 +774,7 @@ SELinux %(domainname)s policy is very flexible allowing users to setup their %(d
 .PP
 """ % {'domainname': self.domainname})
 
-        if len(equiv) > 0:
+        if equiv:
             self.fd.write(r"""
 .PP
 .B EQUIVALENCE DIRECTORIES
@@ -831,7 +829,7 @@ Note: SELinux often uses regular expressions to specify labels that match multip
 Path%s:
 %s""" % (plural, self.fcdict[f]["regex"][0]))
                     for x in self.fcdict[f]["regex"][1:]:
-                        self.fd.write(", %s" % x)
+                        self.fd.write(f", {x}")
 
         self.fd.write("""
 
@@ -849,9 +847,9 @@ to apply the labels.
             if d == self.domainname:
                 continue
             if d.startswith(self.short_name):
-                ret += ", %s_selinux(8)" % d
-            if d.startswith(self.domainname + "_"):
-                ret += ", %s_selinux(8)" % d
+                ret += f", {d}_selinux(8)"
+            if d.startswith(f"{self.domainname}_"):
+                ret += f", {d}_selinux(8)"
         self.fd.write(ret)
 
     def _public_content(self):
@@ -945,7 +943,7 @@ selinux(8), %s(8), semanage(8), restorecon(8), chcon(1), sepolicy(8)""" % (self.
             sepolicy.get_all_allow_rules()
         )]
 
-        if len(entrypoints) == 0:
+        if not entrypoints:
             return
 
         self.fd.write("""
@@ -996,23 +994,29 @@ For example one process might be launched with %(type)s_t:s0:c1,c2, and another 
         except:
             pass
 
-        permlist = list(filter(lambda x:
-            x['source'] in src_list and
-            set(['open', 'write']).issubset(x['permlist']) and
-            x['class'] == 'file',
-            sepolicy.get_all_allow_rules()))
-        if permlist is None or len(permlist) == 0:
+        permlist = list(
+            filter(
+                lambda x: x['source'] in src_list
+                and {'open', 'write'}.issubset(x['permlist'])
+                and x['class'] == 'file',
+                sepolicy.get_all_allow_rules(),
+            )
+        )
+
+        if permlist is None or not permlist:
             return
 
         all_writes = []
         attributes = ["proc_type", "sysctl_type"]
 
         for i in permlist:
-            if self._valid_write(i['target'], attributes):
-                if i['target'] not in all_writes:
-                    all_writes.append(i['target'])
+            if (
+                self._valid_write(i['target'], attributes)
+                and i['target'] not in all_writes
+            ):
+                all_writes.append(i['target'])
 
-        if len(all_writes) == 0:
+        if not all_writes:
             return
         self.fd.write("""
 .SH "MANAGED FILES"
@@ -1087,12 +1091,12 @@ If you want to map the one Linux user (joe) to the SELinux user %(user)s, you wo
 """ % {'user': self.domainname})
 
     def _can_sudo(self):
-        sudotype = "%s_sudo_t" % self.domainname
+        sudotype = f"{self.domainname}_sudo_t"
         self.fd.write("""
 .SH SUDO
 """)
         if sudotype in self.types:
-            role = self.domainname + "_r"
+            role = f"{self.domainname}_r"
             self.fd.write("""
 The SELinux user %(user)s can execute sudo.
 
@@ -1122,8 +1126,7 @@ Modify the roles list and add %(user)s_r to this list.
 For more details you can see semanage man page.
 
 """ % {'user': self.domainname, "roles": " ".join([role] + self.role_allows[role])})
-            else:
-                self.fd.write("""
+            self.fd.write("""
 The SELinux type %s_t is not allowed to execute sudo.
 """ % self.domainname)
 
@@ -1204,12 +1207,23 @@ The SELinux user %s_u is able to connect to the following tcp ports.
 """ % ",".join(ports))
 
     def _home_exec(self):
-        permlist = list(filter(lambda x:
-            x['source'] == self.type and
-            x['target'] == 'user_home_type' and
-            x['class'] == 'file' and
-            set(['ioctl', 'read', 'getattr', 'execute', 'execute_no_trans', 'open']).issubset(set(x['permlist'])),
-            sepolicy.get_all_allow_rules()))
+        permlist = list(
+            filter(
+                lambda x: x['source'] == self.type
+                and x['target'] == 'user_home_type'
+                and x['class'] == 'file'
+                and {
+                    'ioctl',
+                    'read',
+                    'getattr',
+                    'execute',
+                    'execute_no_trans',
+                    'open',
+                }.issubset(set(x['permlist'])),
+                sepolicy.get_all_allow_rules(),
+            )
+        )
+
         self.fd.write("""
 .SH HOME_EXEC
 """)
@@ -1295,11 +1309,11 @@ You need to add %(user)s_r to the staff_u user.  You could setup the staff_u use
 .B $ semanage user -m -R 'staff_r system_r %(user)s_r' staff_u
 
 """ % {'desc': self.desc, 'user': self.domainname})
-        troles = []
-        for i in self.role_allows:
-            if self.domainname + "_r" in self.role_allows[i]:
-                troles.append(i)
-        if len(troles) > 0:
+        if troles := [
+            i
+            for i in self.role_allows
+            if f"{self.domainname}_r" in self.role_allows[i]
+        ]:
             plural = ""
             if len(troles) > 1:
                 plural = "s"

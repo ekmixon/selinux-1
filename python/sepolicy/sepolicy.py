@@ -54,7 +54,7 @@ class CheckPath(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         if not os.path.exists(values):
-            raise ValueError("%s does not exist" % values)
+            raise ValueError(f"{values} does not exist")
         setattr(namespace, self.dest, values)
 
 
@@ -86,14 +86,14 @@ class CheckBoolean(argparse.Action):
             if v not in booleans:
                 raise ValueError("%s must be an SELinux process domain:\nValid domains: %s" % (v, ", ".join(booleans)))
             newval.append(v)
-            setattr(namespace, self.dest, newval)
         else:
             for value in values:
                 v = selinux.selinux_boolean_sub(value)
                 if v not in booleans:
                     raise ValueError("%s must be an SELinux boolean:\nValid boolean: %s" % (v, ", ".join(booleans)))
                 newval.append(v)
-            setattr(namespace, self.dest, newval)
+
+        setattr(namespace, self.dest, newval)
 
 
 class CheckDomain(argparse.Action):
@@ -155,7 +155,7 @@ class CheckPort(argparse.Action):
             newval = []
         for v in values:
             if v < 1 or v > 65536:
-                raise ValueError("%s must be an integer between 1 and 65536" % v)
+                raise ValueError(f"{v} must be an integer between 1 and 65536")
             newval.append(v)
         setattr(namespace, self.dest, newval)
 
@@ -222,13 +222,10 @@ class InterfaceInfo(argparse.Action):
 
 
 def generate_custom_usage(usage_text, usage_dict):
-    sorted_keys = []
-    for i in usage_dict.keys():
-        sorted_keys.append(i)
-    sorted_keys.sort()
+    sorted_keys = sorted(usage_dict.keys())
     for k in sorted_keys:
-        usage_text += "%s %s |" % (k, (" ".join(usage_dict[k])))
-    usage_text = usage_text[:-1] + "]"
+        usage_text += f'{k} {" ".join(usage_dict[k])} |'
+    usage_text = f"{usage_text[:-1]}]"
     usage_text = _(usage_text)
 
     return usage_text
@@ -248,17 +245,18 @@ def _print_net(src, protocol, perm):
     if len(portdict) > 0:
         bold_start = "\033[1m"
         bold_end = "\033[0;0m"
-        print("\n" + bold_start + "%s: %s %s" % (src, protocol, perm) + bold_end)
+        print("\n" + bold_start + f"{src}: {protocol} {perm}" + bold_end)
         port_strings = []
         boolean_text = ""
         for p in portdict:
             for t, recs in portdict[p]:
-                cond = get_conditionals(src, t, "%s_socket" % protocol, [perm])
-                if cond:
+                if cond := get_conditionals(
+                    src, t, f"{protocol}_socket", [perm]
+                ):
                     boolean_text = get_conditionals_format_text(cond)
-                    port_strings.append("%s (%s) %s" % (", ".join(recs), t, boolean_text))
+                    port_strings.append(f'{", ".join(recs)} ({t}) {boolean_text}')
                 else:
-                    port_strings.append("%s (%s)" % (", ".join(recs), t))
+                    port_strings.append(f'{", ".join(recs)} ({t})')
         port_strings.sort(key=lambda param: port_string_to_num(param))
         for p in port_strings:
             print("\t" + p)
@@ -266,8 +264,8 @@ def _print_net(src, protocol, perm):
 
 def network(args):
     portrecs, portrecsbynum = sepolicy.gen_port_dict()
-    all_ports = []
     if args.list_ports:
+        all_ports = []
         for i in portrecs:
             if i[0] not in all_ports:
                 all_ports.append(i[0])
@@ -277,11 +275,8 @@ def network(args):
     for port in args.port:
         found = False
         for i in portrecsbynum:
-            if i[0] <= port and port <= i[1]:
-                if i[0] == i[1]:
-                    range = i[0]
-                else:
-                    range = "%s-%s" % (i[0], i[1])
+            if i[0] <= port <= i[1]:
+                range = i[0] if i[0] == i[1] else f"{i[0]}-{i[1]}"
                 found = True
                 print("%d: %s %s %s" % (port, i[2], portrecsbynum[i][0], range))
         if not found:
@@ -292,13 +287,12 @@ def network(args):
 
     for t in args.type:
         if (t, 'tcp') in portrecs.keys():
-            print("%s: tcp: %s" % (t, ",".join(portrecs[t, 'tcp'])))
+            print(f"""{t}: tcp: {",".join(portrecs[t, 'tcp'])}""")
         if (t, 'udp') in portrecs.keys():
-            print( "%s: udp: %s" % (t, ",".join(portrecs[t, 'udp'])))
+            print(f"""{t}: udp: {",".join(portrecs[t, 'udp'])}""")
 
     for a in args.applications:
-        d = sepolicy.get_init_transtype(a)
-        if d:
+        if d := sepolicy.get_init_transtype(a):
             args.domain.append(d)
 
     for d in args.domain:
@@ -311,7 +305,6 @@ def gui_run(args):
     try:
         import sepolicy.gui
         sepolicy.gui.SELinuxGui(args.domain, args.test)
-        pass
     except ImportError:
         raise ValueError(_("You need to install policycoreutils-gui package to use the gui option"))
 
@@ -341,11 +334,7 @@ def manpage(args):
     if args.source_files and args.root == "/":
         raise ValueError(_("Alternative root needs to be setup"))
 
-    if args.all:
-        test_domains = gen_domains()
-    else:
-        test_domains = args.domain
-
+    test_domains = gen_domains() if args.all else args.domain
     p = Pool()
     for domain in test_domains:
         p.apply_async(manpage_work, [domain, path, args.root, args.source_files, args.web])
@@ -511,7 +500,7 @@ def generate(args):
     if args.policytype is None:
         generate_usage = generate_custom_usage(usage, usage_dict)
         for k in usage_dict:
-            error_text += "%s" % (k)
+            error_text += f"{k}"
         print(generate_usage)
         print(_("sepolicy generate: error: one of the arguments %s is required") % error_text)
         sys.exit(1)
@@ -532,13 +521,14 @@ def generate(args):
             raise ValueError(_("-t option can not be used with '%s' domains. Read usage for more details.") % sepolicy.generate.poltype[args.policytype])
         mypolicy.set_types(args.types)
 
-    if args.domain:
-        if args.policytype not in conflict_args['DOMAIN']:
-            raise ValueError(_("-d option can not be used with '%s' domains. Read usage for more details.") % sepolicy.generate.poltype[args.policytype])
+    if args.domain and args.policytype not in conflict_args['DOMAIN']:
+        raise ValueError(_("-d option can not be used with '%s' domains. Read usage for more details.") % sepolicy.generate.poltype[args.policytype])
 
-    if args.admin_domain:
-        if args.policytype not in conflict_args['ADMIN_DOMAIN']:
-            raise ValueError(_("-a option can not be used with '%s' domains. Read usage for more details.") % sepolicy.generate.poltype[args.policytype])
+    if (
+        args.admin_domain
+        and args.policytype not in conflict_args['ADMIN_DOMAIN']
+    ):
+        raise ValueError(_("-a option can not be used with '%s' domains. Read usage for more details.") % sepolicy.generate.poltype[args.policytype])
 
     if len(args.writepaths) > 0 and args.policytype == NEWTYPE:
 

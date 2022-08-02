@@ -77,11 +77,7 @@ class PolicyGenerator:
         self.ifgen = None
         self.explain = NO_EXPLANATION
         self.gen_requires = False
-        if module:
-            self.module = module
-        else:
-            self.module = refpolicy.Module()
-
+        self.module = module or refpolicy.Module()
         self.dontaudit = False
         self.xperms = False
 
@@ -129,10 +125,7 @@ class PolicyGenerator:
         self.xperms = xperms
 
     def __set_module_style(self):
-        if self.ifgen:
-            refpolicy = True
-        else:
-            refpolicy = False
+        refpolicy = bool(self.ifgen)
         for mod in self.module.module_declarations():
             mod.refpolicy = refpolicy
 
@@ -148,10 +141,7 @@ class PolicyGenerator:
             self.module.children.insert(0, m)
         m.name = name
         m.version = version
-        if self.ifgen:
-            m.refpolicy = True
-        else:
-            m.refpolicy = False
+        m.refpolicy = bool(self.ifgen)
 
     def get_module(self):
         # Generate the requires
@@ -200,11 +190,23 @@ class PolicyGenerator:
                  ( "dir" in av.obj_class or "open" in av.perms )):
                 if not self.domains:
                     self.domains = seinfo(ATTRIBUTE, name="domain")[0]["types"]
-                types=[]
+                types = [
+                    i
+                    for i in [
+                        x[TCONTEXT]
+                        for x in sesearch(
+                            [ALLOW],
+                            {
+                                SCONTEXT: av.src_type,
+                                CLASS: av.obj_class,
+                                PERMS: av.perms,
+                            },
+                        )
+                    ]
+                    if i not in self.domains
+                ]
 
-                for i in [x[TCONTEXT] for x in sesearch([ALLOW], {SCONTEXT: av.src_type, CLASS: av.obj_class, PERMS: av.perms})]:
-                    if i not in self.domains:
-                        types.append(i)
+
                 if len(types) == 1:
                     rule.comment += "\n#!!!! The source type '%s' can write to a '%s' of the following type:\n# %s\n" % ( av.src_type, av.obj_class, ", ".join(types))
                 elif len(types) >= 1:
@@ -284,7 +286,7 @@ def explain_access(av, ml=None, verbosity=SHORT_EXPLANATION):
     # access was requested - either long or short.
     if verbosity == LONG_EXPLANATION:
         for msg in av.audit_msgs:
-            s.append(' %s' % msg.header)
+            s.append(f' {msg.header}')
             s.append('  scontext="%s" tcontext="%s"' %
                      (str(msg.scontext), str(msg.tcontext)))
             s.append('  class="%s" perms="%s"' %
@@ -315,15 +317,15 @@ def call_interface(interface, av):
     ifcall = refpolicy.InterfaceCall()
     ifcall.ifname = interface.name
 
-    for i in range(len(params)):
-        if params[i].type == refpolicy.SRC_TYPE:
+    for param in params:
+        if param.type == refpolicy.SRC_TYPE:
             ifcall.args.append(av.src_type)
-        elif params[i].type == refpolicy.TGT_TYPE:
+        elif param.type == refpolicy.TGT_TYPE:
             ifcall.args.append(av.tgt_type)
-        elif params[i].type == refpolicy.OBJ_CLASS:
+        elif param.type == refpolicy.OBJ_CLASS:
             ifcall.args.append(av.obj_class)
         else:
-            print(params[i].type)
+            print(param.type)
             assert(0)
 
     assert(len(ifcall.args) > 0)

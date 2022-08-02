@@ -11,36 +11,32 @@ class SELinuxDBus (object):
         self.dbus_object = self.bus.get_object("org.selinux", "/org/selinux/object")
 
     def semanage(self, buf):
-        ret = self.dbus_object.semanage(buf, dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.semanage(buf, dbus_interface="org.selinux")
 
     def restorecon(self, path):
-        ret = self.dbus_object.restorecon(path, dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.restorecon(path, dbus_interface="org.selinux")
 
     def setenforce(self, value):
-        ret = self.dbus_object.setenforce(value, dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.setenforce(value, dbus_interface="org.selinux")
 
     def customized(self):
-        ret = self.dbus_object.customized(dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.customized(dbus_interface="org.selinux")
 
     def semodule_list(self):
-        ret = self.dbus_object.semodule_list(dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.semodule_list(dbus_interface="org.selinux")
 
     def relabel_on_boot(self, value):
-        ret = self.dbus_object.relabel_on_boot(value, dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.relabel_on_boot(value, dbus_interface="org.selinux")
 
     def change_default_mode(self, value):
-        ret = self.dbus_object.change_default_mode(value, dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.change_default_mode(
+            value, dbus_interface="org.selinux"
+        )
 
     def change_default_policy(self, value):
-        ret = self.dbus_object.change_default_policy(value, dbus_interface="org.selinux")
-        return ret
+        return self.dbus_object.change_default_policy(
+            value, dbus_interface="org.selinux"
+        )
 
 if __name__ == "__main__":
     try:

@@ -78,13 +78,10 @@ class domainsPage(semanagePage):
         self.load()
 
     def get_modules(self):
-        modules = []
         fd = os.popen("semodule -l")
         mods = fd.readlines()
         fd.close()
-        for l in mods:
-            modules.append(l.split()[0])
-        return modules
+        return [l.split()[0] for l in mods]
 
     def load(self, filter=""):
         self.filter = filter
@@ -96,7 +93,7 @@ class domainsPage(semanagePage):
                     continue
                 iter = self.store.append()
                 self.store.set_value(iter, 0, domain)
-                t = "permissive_%s_t" % domain
+                t = f"permissive_{domain}_t"
                 if t in modules:
                     self.store.set_value(iter, 1, _("Permissive"))
                 else:
@@ -123,7 +120,7 @@ class domainsPage(semanagePage):
         domain = store.get_value(iter, 0)
         try:
             self.wait()
-            status, output = getstatusoutput("semanage permissive -d %s_t" % domain)
+            status, output = getstatusoutput(f"semanage permissive -d {domain}_t")
             self.ready()
             if status != 0:
                 self.error(output)
@@ -148,7 +145,7 @@ class domainsPage(semanagePage):
         domain = store.get_value(iter, 0)
         try:
             self.wait()
-            status, output = getstatusoutput("semanage permissive -a %s_t" % domain)
+            status, output = getstatusoutput(f"semanage permissive -a {domain}_t")
             self.ready()
             if status != 0:
                 self.error(output)

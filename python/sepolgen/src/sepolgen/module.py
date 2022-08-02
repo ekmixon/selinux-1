@@ -41,10 +41,7 @@ def is_valid_name(modname):
     """Check that a module name is valid.
     """
     m = re.findall(r"[^a-zA-Z0-9_\-\.]", modname)
-    if len(m) == 0 and modname[0].isalpha():
-        return True
-    else:
-        return False
+    return bool(len(m) == 0 and modname[0].isalpha())
 
 class ModuleTree:
     def __init__(self, modname):
@@ -55,30 +52,28 @@ class ModuleTree:
         return self.dirname
 
     def te_name(self):
-        return self.dirname + "/" + self.modname + ".te"
+        return f"{self.dirname}/{self.modname}.te"
 
     def fc_name(self):
-        return self.dirname + "/" + self.modname + ".fc"
+        return f"{self.dirname}/{self.modname}.fc"
 
     def if_name(self):
-        return self.dirname + "/" + self.modname + ".if"
+        return f"{self.dirname}/{self.modname}.if"
 
     def package_name(self):
-        return self.dirname + "/" + self.modname + ".pp"
+        return f"{self.dirname}/{self.modname}.pp"
 
     def makefile_name(self):
-        return self.dirname + "/Makefile"
+        return f"{self.dirname}/Makefile"
 
     def create(self, parent_dirname, makefile_include=None):
-        self.dirname = parent_dirname + "/" + self.modname
+        self.dirname = f"{parent_dirname}/{self.modname}"
         os.mkdir(self.dirname)
-        fd = open(self.makefile_name(), "w")
-        if makefile_include:
-            fd.write("include " + makefile_include)
-        else:
-            fd.write("include " + defaults.refpolicy_makefile())
-        fd.close()
-
+        with open(self.makefile_name(), "w") as fd:
+            if makefile_include:
+                fd.write(f"include {makefile_include}")
+            else:
+                fd.write(f"include {defaults.refpolicy_makefile()}")
         # Create empty files for the standard refpolicy
         # module files
         open(self.te_name(), "w").close()
@@ -149,10 +144,10 @@ class ModuleCompiler:
         if len(splitname) < 2:
             raise RuntimeError("invalid sourcefile name %s (must end in .te)", sourcename)
         # Handle other periods in the filename correctly
-        basename = ".".join(splitname[0:-1])
-        modname = basename + ".mod"
-        packagename = basename + ".pp"
-        
+        basename = ".".join(splitname[:-1])
+        modname = f"{basename}.mod"
+        packagename = f"{basename}.pp"
+
         return (modname, packagename)
 
     def create_module_package(self, sourcename, refpolicy=True):
@@ -181,7 +176,7 @@ class ModuleCompiler:
             
     def refpol_build(self, sourcename):
         # Compile
-        command = self.make + " -f " + self.refpol_makefile
+        command = f"{self.make} -f {self.refpol_makefile}"
         rc = self.run(command)
 
         # Raise an error if the process failed
@@ -203,14 +198,9 @@ class ModuleCompiler:
             raise RuntimeError("compilation failed:\n%s" % self.last_output)
 
     def package(self, modname, packagename):
-        s = [self.semodule_package]
-        s.append("-o")
-        s.append(packagename)
-        s.append("-m")
-        s.append(modname)
-        
+        s = [self.semodule_package, "-o", packagename, "-m", modname]
         rc = self.run(" ".join(s))
         if rc != 0:
-            raise RuntimeError("packaging failed [%s]" % self.last_output)
+            raise RuntimeError(f"packaging failed [{self.last_output}]")
         
     

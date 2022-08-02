@@ -66,10 +66,7 @@ def id_set_cmp(x, y):
 
     if len(xl) != len(yl):
         return cmp(xl[0], yl[0])
-    for v in zip(xl, yl):
-        if v[0] != v[1]:
-            return cmp(v[0], v[1])
-    return 0
+    return next((cmp(v[0], v[1]) for v in zip(xl, yl) if v[0] != v[1]), 0)
 
 # Compare two avrules
 def avrule_cmp(a, b):
@@ -80,11 +77,7 @@ def avrule_cmp(a, b):
     if ret != 0:
         return ret
     ret = id_set_cmp(a.obj_classes, b.obj_classes)
-    if ret != 0:
-        return ret
-
-    # At this point, who cares - just return something
-    return 0
+    return ret if ret != 0 else 0
 
 # Compare two interface calls
 def ifcall_cmp(a, b):
@@ -95,15 +88,16 @@ def ifcall_cmp(a, b):
 # Compare an two avrules or interface calls
 def rule_cmp(a, b):
     if isinstance(a, refpolicy.InterfaceCall):
-        if isinstance(b, refpolicy.InterfaceCall):
-            return ifcall_cmp(a, b)
-        else:
-            return id_set_cmp([a.args[0]], b.src_types)
+        return (
+            ifcall_cmp(a, b)
+            if isinstance(b, refpolicy.InterfaceCall)
+            else id_set_cmp([a.args[0]], b.src_types)
+        )
+
+    if isinstance(b, (refpolicy.AVRule, refpolicy.AVExtRule)):
+        return avrule_cmp(a,b)
     else:
-        if isinstance(b, refpolicy.AVRule) or isinstance(b, refpolicy.AVExtRule):
-            return avrule_cmp(a,b)
-        else:
-            return id_set_cmp(a.src_types, [b.args[0]])
+        return id_set_cmp(a.src_types, [b.args[0]])
                 
 def role_type_cmp(a, b):
     return cmp(a.role, b.role)
@@ -147,7 +141,7 @@ def sort_filter(module):
                     sep_rules.append(refpolicy.Comment())
                 cur = x
                 comment = refpolicy.Comment()
-                comment.lines.append("============= %s ==============" % cur)
+                comment.lines.append(f"============= {cur} ==============")
                 sep_rules.append(comment)
             sep_rules.append(rule)
 
@@ -161,7 +155,7 @@ def sort_filter(module):
             comment = refpolicy.Comment()
             comment.lines.append("============= ROLES ==============")
             c.append(comment)
-        
+
 
         c.extend(ras)
 

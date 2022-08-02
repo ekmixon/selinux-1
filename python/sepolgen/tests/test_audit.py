@@ -199,10 +199,9 @@ class TestAuditParser(unittest.TestCase):
         self.assertEqual(a.avc_msgs[1].path, "/usr/lib/sa/sa1")
 
     def test_parse_file(self):
-        f = open("audit.txt")
-        a = sepolgen.audit.AuditParser()
-        a.parse_file(f)
-        f.close()
+        with open("audit.txt") as f:
+            a = sepolgen.audit.AuditParser()
+            a.parse_file(f)
         self.assertEqual(len(a.avc_msgs), 21)
         self.assertEqual(len(a.compute_sid_msgs), 0)
         self.assertEqual(len(a.invalid_msgs), 0)

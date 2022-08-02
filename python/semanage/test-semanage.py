@@ -29,7 +29,7 @@ class SemanageTests(unittest.TestCase):
         for object in object_list:
             if object in ["dontaudit", "module", "permissive"]:
                 continue
-            "Verify semanage %s -E" % object
+            f"Verify semanage {object} -E"
             p = Popen(['semanage', object, '-E'], stdout=PIPE)
             out, err = p.communicate()
             self.assertSuccess(p.returncode, err)
@@ -64,7 +64,7 @@ class SemanageTests(unittest.TestCase):
         for object in object_list:
             if object in ["dontaudit"]:
                 continue
-            "Verify semanage %s -l" % object
+            f"Verify semanage {object} -l"
             p = Popen(['semanage', object, '-l'], stdout=PIPE)
             out, err = p.communicate()
             self.assertSuccess(p.returncode, err)
@@ -73,7 +73,7 @@ class SemanageTests(unittest.TestCase):
         for object in object_list:
             if object in ["module", "permissive", "dontaudit"]:
                 continue
-            print("Verify semanage %s -l" % object)
+            print(f"Verify semanage {object} -l")
             p = Popen(['semanage', object, '-lC'], stdout=PIPE)
             out, err = p.communicate()
             self.assertSuccess(p.returncode, err)
@@ -207,11 +207,17 @@ class SemanageTests(unittest.TestCase):
         boolean_status = {0: "--off", 1: "--on"}
         boolean_state = selinux.security_get_boolean_active("httpd_anon_write")
         # Test
-        print("Verify semanage boolean -m %s httpd_anon_write" % boolean_status[not boolean_state])
+        print(
+            f"Verify semanage boolean -m {boolean_status[not boolean_state]} httpd_anon_write"
+        )
+
         p = Popen(["semanage", "boolean", "-m", boolean_status[(not boolean_state)], "httpd_anon_write"], stdout=PIPE)
         out, err = p.communicate()
         self.assertSuccess(p.returncode, err)
-        print("Verify semanage boolean -m %s httpd_anon_write" % boolean_status[boolean_state])
+        print(
+            f"Verify semanage boolean -m {boolean_status[boolean_state]} httpd_anon_write"
+        )
+
         p = Popen(["semanage", "boolean", "-m", boolean_status[boolean_state], "httpd_anon_write"], stdout=PIPE)
         out, err = p.communicate()
         self.assertSuccess(p.returncode, err)

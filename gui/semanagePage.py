@@ -55,9 +55,9 @@ class semanagePage:
         self.ready_cursor = Gdk.Cursor.new(Gdk.CursorType.LEFT_PTR)
 
         self.local = False
-        self.view = xml.get_object("%sView" % name)
-        self.dialog = xml.get_object("%sDialog" % name)
-        self.filter_entry = xml.get_object("%sFilterEntry" % name)
+        self.view = xml.get_object(f"{name}View")
+        self.dialog = xml.get_object(f"{name}Dialog")
+        self.filter_entry = xml.get_object(f"{name}FilterEntry")
         self.filter_entry.connect("focus_out_event", self.filter_changed)
         self.filter_entry.connect("activate", self.filter_changed)
         self.filter_entry.connect("changed", self.filter_changed)
@@ -88,9 +88,7 @@ class semanagePage:
     def search(self, model, col, key, i):
         sort_col = self.store.get_sort_column_id()[0]
         val = model.get_value(i, sort_col)
-        if val.lower().startswith(key.lower()):
-            return False
-        return True
+        return not val.lower().startswith(key.lower())
 
     def match(self, target, filter):
         try:
@@ -127,7 +125,17 @@ class semanagePage:
 
     def deleteDialog(self):
         store, it = self.view.get_selection().get_selected()
-        if (it is not None) and (self.verify(_("Are you sure you want to delete %s '%s'?" % (self.description, store.get_value(it, 0))), _("Delete %s" % self.description)) == Gtk.ResponseType.YES):
+        if (
+            it is not None
+            and self.verify(
+                _(
+                    "Are you sure you want to delete %s '%s'?"
+                    % (self.description, store.get_value(it, 0))
+                ),
+                _(f"Delete {self.description}"),
+            )
+            == Gtk.ResponseType.YES
+        ):
             self.delete()
 
     def use_menus(self):
@@ -135,7 +143,7 @@ class semanagePage:
 
     def addDialog(self):
         self.dialogClear()
-        self.dialog.set_title(_("Add %s" % self.description))
+        self.dialog.set_title(_(f"Add {self.description}"))
         self.dialog.set_position(Gtk.WindowPosition.MOUSE)
 
         while self.dialog.run() == Gtk.ResponseType.OK:
@@ -149,7 +157,7 @@ class semanagePage:
 
     def propertiesDialog(self):
         self.dialogInit()
-        self.dialog.set_title(_("Modify %s" % self.description))
+        self.dialog.set_title(_(f"Modify {self.description}"))
         self.dialog.set_position(Gtk.WindowPosition.MOUSE)
         while self.dialog.run() == Gtk.ResponseType.OK:
             try:

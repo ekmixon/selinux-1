@@ -116,10 +116,10 @@ class TestSecurityContext(unittest.TestCase):
         self.assertEqual(sc.type, "foo_t")
         self.assertEqual(sc.level, None)
         if selinux.is_selinux_mls_enabled():
-            self.assertEqual(str(sc), context + ":s0")
+            self.assertEqual(str(sc), f"{context}:s0")
         else:
             self.assertEqual(str(sc), context)
-        self.assertEqual(sc.to_string(default_level="s1"), context + ":s1")
+        self.assertEqual(sc.to_string(default_level="s1"), f"{context}:s1")
 
         context = "user_u:object_r:foo_t:s0-s0:c0-c255"
         sc = refpolicy.SecurityContext()
@@ -302,13 +302,9 @@ class TestHeaders(unittest.TestCase):
         h.children.append(refpolicy.Interface(name="foo"))
         h.children.append(refpolicy.Interface(name="bar"))
         h.children.append(refpolicy.ClassMap("file", "read write"))
-        i = 0
-        for node in h:
-            i += 1
+        i = sum(1 for _ in h)
         self.assertEqual(i, 3)
-        
-        i = 0
-        for node in h.interfaces():
-            i += 1
+
+        i = sum(1 for _ in h.interfaces())
         self.assertEqual(i, 2)
         

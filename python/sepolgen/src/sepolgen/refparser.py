@@ -438,10 +438,7 @@ def p_ifdef(p):
              | IFDEF OPAREN TICK IDENTIFIER SQUOTE COMMA TICK statements SQUOTE COMMA TICK statements SQUOTE CPAREN optional_semi
     '''
     x = refpolicy.IfDef(p[4])
-    if p[1] == 'ifdef':
-        v = True
-    else:
-        v = False
+    v = p[1] == 'ifdef'
     collect(p[8], x, val=v)
     if len(p) > 12:
         collect(p[12], x, val=False)
@@ -467,19 +464,13 @@ def p_interface_call_param(p):
     '''
     # Intentionally let single identifiers pass through
     # List means set, non-list identifier
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        p[0] = [p[1], "-" + p[3]]
+    p[0] = p[1] if len(p) == 2 else [p[1], f"-{p[3]}"]
 
 def p_interface_call_param_list(p):
     '''interface_call_param_list : interface_call_param
                                  | interface_call_param_list COMMA interface_call_param
     '''
-    if len(p) == 2:
-        p[0] = [p[1]]
-    else:
-        p[0] = p[1] + [p[3]]
+    p[0] = [p[1]] if len(p) == 2 else p[1] + [p[3]]
 
 
 def p_obj_perm_set(p):
@@ -645,7 +636,7 @@ def p_portcon(p):
         c.port_number = p[3]
         c.context = p[4]
     else:
-        c.port_number = p[3] + "-" + p[4]
+        c.port_number = f"{p[3]}-{p[4]}"
         c.context = p[5]
 
     p[0] = c
@@ -686,7 +677,7 @@ def p_iomemcon(p):
         c.device_mem = p[2]
         c.context = p[3]
     else:
-        c.device_mem = p[2] + "-" + p[3]
+        c.device_mem = f"{p[2]}-{p[3]}"
         c.context = p[4]
 
     p[0] = c
@@ -699,7 +690,7 @@ def p_ioportcon(p):
         c.ioport = p[2]
         c.context = p[3]
     else:
-        c.ioport = p[2] + "-" + p[3]
+        c.ioport = f"{p[2]}-{p[3]}"
         c.context = p[4]
 
     p[0] = c
@@ -726,7 +717,7 @@ def p_mls_range_def(p):
     '''
     p[0] = p[1]
     if len(p) > 2:
-        p[0] = p[0] + "-" + p[3]
+        p[0] = f"{p[0]}-{p[3]}"
 
 def p_mls_level_def(p):
     '''mls_level_def : IDENTIFIER COLON comma_list
@@ -734,7 +725,7 @@ def p_mls_level_def(p):
     '''
     p[0] = p[1]
     if len(p) > 2:
-        p[0] = p[0] + ":" + ",".join(p[3])
+        p[0] = f"{p[0]}:" + ",".join(p[3])
     
 def p_type_def(p):
     '''type_def : TYPE IDENTIFIER COMMA comma_list SEMI
@@ -841,10 +832,7 @@ def p_bool(p):
             | BOOL IDENTIFIER FALSE SEMI'''
     b = refpolicy.Bool()
     b.name = p[2]
-    if p[3] == "true":
-        b.state = True
-    else:
-        b.state = False
+    b.state = p[3] == "true"
     p[0] = b
 
 def p_gen_tunable(p):
@@ -852,10 +840,7 @@ def p_gen_tunable(p):
                    | GEN_TUNABLE OPAREN TICK IDENTIFIER SQUOTE COMMA FALSE CPAREN'''
     b = refpolicy.Bool()
     b.name = p[4]
-    if p[7] == "true":
-        b.state = True
-    else:
-        b.state = False
+    b.state = p[7] == "true"
     p[0] = b
 
 def p_conditional(p):
@@ -937,7 +922,7 @@ def p_names(p):
         s.compliment = True
     else:
         expand([p[1]])
-        s.add("-" + p[3])
+        s.add(f"-{p[3]}")
     p[0] = s
 
 def p_identifier(p):
@@ -957,10 +942,7 @@ def p_nested_id_list(p):
     '''nested_id_list : nested_id_element
                       | nested_id_list nested_id_element
     '''
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        p[0] = p[1] + p[2]
+    p[0] = p[1] if len(p) == 2 else p[1] + p[2]
 
 def p_nested_id_element(p):
     '''nested_id_element : identifier
@@ -971,7 +953,7 @@ def p_nested_id_element(p):
         p[0] = p[1]
     else:
         # For now just leave the '-'
-        str = "-" + p[2]
+        str = f"-{p[2]}"
         p[0] = [str]
 
 def p_comma_list(p):
@@ -1001,9 +983,7 @@ def p_error(tok):
 def prep_spt(spt):
     if not spt:
         return { }
-    map = {}
-    for x in spt:
-        map[x.name] = x
+    map = {x.name: x for x in spt}
 
 parser = None
 lexer = None
@@ -1014,15 +994,8 @@ def create_globals(module, support, debug):
         lexer = lex.lex()
         parser = yacc.yacc(method="LALR", debug=debug, write_tables=0)
 
-    if module is not None:
-        m = module
-    else:
-        m = refpolicy.Module()
-
-    if not support:
-        spt = refpolicy.SupportMacros()
-    else:
-        spt = support
+    m = module if module is not None else refpolicy.Module()
+    spt = support or refpolicy.SupportMacros()
 
 def parse(text, module=None, support=None, debug=False):
     create_globals(module, support, debug)
@@ -1036,7 +1009,7 @@ def parse(text, module=None, support=None, debug=False):
     except Exception as e:
         parser = None
         lexer = None
-        error = "internal parser error: %s" % str(e) + "\n" + traceback.format_exc()
+        error = f"internal parser error: {str(e)}" + "\n" + traceback.format_exc()
 
     if not success:
         # force the parser and lexer to be rebuilt - we have some problems otherwise
@@ -1076,7 +1049,7 @@ def parse_headers(root, output=None, expand=True, debug=False):
     if os.path.isfile(root):
         name = os.path.split(root)[1]
         if name == '':
-            raise ValueError("Invalid file name %s" % root)
+            raise ValueError(f"Invalid file name {root}")
         modname = os.path.splitext(name)
         modules.append((modname[0], root))
         all_modules, support_macros = list_headers(defaults.headers())
@@ -1095,19 +1068,18 @@ def parse_headers(root, output=None, expand=True, debug=False):
         if debug:
             o("parsing file %s\n" % f)
         try:
-            fd = open(f)
-            txt = fd.read()
-            fd.close()
+            with open(f) as fd:
+                txt = fd.read()
             parse_file = f
             parse(txt, module, spt, debug)
         except IOError as e:
             return
         except ValueError as e:
-            raise ValueError("error parsing file %s: %s" % (f, str(e)))
+            raise ValueError(f"error parsing file {f}: {str(e)}")
 
     spt = None
     if support_macros:
-        o("Parsing support macros (%s): " % support_macros)
+        o(f"Parsing support macros ({support_macros}): ")
         spt = refpolicy.SupportMacros()
         parse_file(support_macros, spt)
 

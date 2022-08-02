@@ -44,14 +44,13 @@ def is_idparam(id):
       True if the id is a parameter
       False if the id is not a parameter
     """
-    if len(id) > 1 and id[0] == '$':
-        try:
-            int(id[1:])
-        except ValueError:
-            return False
-        return True
-    else:
+    if len(id) <= 1 or id[0] != '$':
         return False
+    try:
+        int(id[1:])
+    except ValueError:
+        return False
+    return True
 
 class AccessVector(util.Comparison):
     """
@@ -116,7 +115,7 @@ class AccessVector(util.Comparison):
         (see to_list) and for initializing access vectors.
         """
         if len(list) < 4:
-            raise ValueError("List must contain at least four elements %s" % str(list))
+            raise ValueError(f"List must contain at least four elements {str(list)}")
         self.src_type = list[0]
         self.tgt_type = list[1]
         self.obj_class = list[2]
@@ -147,8 +146,7 @@ class AccessVector(util.Comparison):
         return self.to_string()
 
     def to_string(self):
-        return "allow %s %s:%s %s;" % (self.src_type, self.tgt_type,
-                                        self.obj_class, self.perms.to_space_str())
+        return f"allow {self.src_type} {self.tgt_type}:{self.obj_class} {self.perms.to_space_str()};"
 
     def _compare(self, other, method):
         try:
@@ -217,8 +215,7 @@ class AccessVectorSet:
         """Iterate over all of the unique access vectors in the set."""
         for tgts in self.src.values():
             for objs in tgts.values():
-                for av in objs.values():
-                    yield av
+                yield from objs.values()
 
     def __len__(self):
         """Return the number of unique access vectors in the set.
@@ -251,11 +248,7 @@ class AccessVectorSet:
 
         See AccessVector.to_list for more information.
         """
-        l = []
-        for av in self:
-            l.append(av.to_list())
-
-        return l
+        return [av.to_list() for av in self]
 
     def from_list(self, l):
         """Add access vectors stored in a list.
@@ -326,8 +319,7 @@ class RoleTypeSet:
 
     def __iter__(self):
         """Iterate over all of the unique role allows statements in the set."""
-        for role_type in self.role_types.values():
-            yield role_type
+        yield from self.role_types.values()
 
     def __len__(self):
         """Return the unique number of role allow statements."""

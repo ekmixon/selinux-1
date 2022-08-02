@@ -23,10 +23,8 @@ import sepolgen.objectmodel
 class TestInfoFlow(unittest.TestCase):
     def test_from_file(self):
         info = sepolgen.objectmodel.PermMappings()
-        fd = open("perm_map")
-        info.from_file(fd)
-        fd.close()
-
+        with open("perm_map") as fd:
+            info.from_file(fd)
         pm = info.get("filesystem", "mount")
         self.assertEqual(pm.perm, "mount")
         self.assertEqual(pm.dir, sepolgen.objectmodel.FLOW_WRITE)

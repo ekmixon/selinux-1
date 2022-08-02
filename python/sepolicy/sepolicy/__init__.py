@@ -62,24 +62,24 @@ ROLE_ALLOW = 'role_allow'
 
 
 # Autofill for adding files *************************
-DEFAULT_DIRS = {}
-DEFAULT_DIRS["/etc"] = "etc_t"
-DEFAULT_DIRS["/tmp"] = "tmp_t"
-DEFAULT_DIRS["/usr/lib/systemd/system"] = "unit_file_t"
-DEFAULT_DIRS["/lib/systemd/system"] = "unit_file_t"
-DEFAULT_DIRS["/etc/systemd/system"] = "unit_file_t"
-DEFAULT_DIRS["/var/cache"] = "var_cache_t"
-DEFAULT_DIRS["/var/lib"] = "var_lib_t"
-DEFAULT_DIRS["/var/log"] = "log_t"
-DEFAULT_DIRS["/var/run"] = "var_run_t"
-DEFAULT_DIRS["/run"] = "var_run_t"
-DEFAULT_DIRS["/run/lock"] = "var_lock_t"
-DEFAULT_DIRS["/var/run/lock"] = "var_lock_t"
-DEFAULT_DIRS["/var/spool"] = "var_spool_t"
-DEFAULT_DIRS["/var/www"] = "content_t"
+DEFAULT_DIRS = {
+    "/etc": "etc_t",
+    "/tmp": "tmp_t",
+    "/usr/lib/systemd/system": "unit_file_t",
+    "/lib/systemd/system": "unit_file_t",
+    "/etc/systemd/system": "unit_file_t",
+    "/var/cache": "var_cache_t",
+    "/var/lib": "var_lib_t",
+    "/var/log": "log_t",
+    "/var/run": "var_run_t",
+    "/run": "var_run_t",
+    "/run/lock": "var_lock_t",
+    "/var/run/lock": "var_lock_t",
+    "/var/spool": "var_spool_t",
+    "/var/www": "content_t",
+}
 
-file_type_str = {}
-file_type_str["a"] = _("all files")
+file_type_str = {"a": _("all files")}
 file_type_str["f"] = _("regular file")
 file_type_str["d"] = _("directory")
 file_type_str["c"] = _("character device")
@@ -88,15 +88,16 @@ file_type_str["s"] = _("socket file")
 file_type_str["l"] = _("symbolic link")
 file_type_str["p"] = _("named pipe")
 
-trans_file_type_str = {}
-trans_file_type_str[""] = "a"
-trans_file_type_str["--"] = "f"
-trans_file_type_str["-d"] = "d"
-trans_file_type_str["-c"] = "c"
-trans_file_type_str["-b"] = "b"
-trans_file_type_str["-s"] = "s"
-trans_file_type_str["-l"] = "l"
-trans_file_type_str["-p"] = "p"
+trans_file_type_str = {
+    "": "a",
+    "--": "f",
+    "-d": "d",
+    "-c": "c",
+    "-b": "b",
+    "-s": "s",
+    "-l": "l",
+    "-p": "p",
+}
 
 # the setools policy handle
 _pol = None
@@ -139,7 +140,7 @@ def policy_sortkey(policy_path):
 def get_installed_policy(root="/"):
     try:
         path = root + selinux.selinux_binary_policy_path()
-        policies = glob.glob("%s.*" % path)
+        policies = glob.glob(f"{path}.*")
         policies.sort(key=policy_sortkey)
         return policies[-1]
     except:
@@ -148,8 +149,7 @@ def get_installed_policy(root="/"):
 
 def get_store_policy(store):
     """Get the path to the policy file located in the given store name"""
-    policies = glob.glob("%s%s/policy/policy.*" %
-                         (selinux.selinux_path(), store))
+    policies = glob.glob(f"{selinux.selinux_path()}{store}/policy/policy.*")
     if not policies:
         return None
     # Return the policy with the higher version number
@@ -183,10 +183,10 @@ def policy(policy_file):
         raise ValueError(_("Failed to read %s policy file") % policy_file)
 
 def load_store_policy(store):
-    policy_file = get_store_policy(store)
-    if not policy_file:
+    if policy_file := get_store_policy(store):
+        policy(policy_file)
+    else:
         return None
-    policy(policy_file)
 
 def init_policy():
     policy_file = get_installed_policy()
@@ -202,7 +202,7 @@ def info(setype, name=None):
         q.name = name
         results = list(q.results())
 
-        if name and len(results) < 1:
+        if name and not results:
             # type not found, try alias
             q.name = None
             q.alias = name
@@ -312,9 +312,11 @@ def _setools_rule_to_dict(rule):
     # Evaluate boolean expression associated with given rule (if there is any)
     try:
         # Get state of all booleans in the conditional expression
-        boolstate = {}
-        for boolean in rule.conditional.booleans:
-            boolstate[str(boolean)] = boolean.state
+        boolstate = {
+            str(boolean): boolean.state
+            for boolean in rule.conditional.booleans
+        }
+
         # evaluate if the rule is enabled
         enabled = rule.conditional.evaluate(**boolstate) == rule.conditional_block
     except AttributeError:
@@ -352,23 +354,22 @@ def search(types, seinfo=None):
         init_policy()
     if not seinfo:
         seinfo = {}
-    valid_types = set([ALLOW, AUDITALLOW, NEVERALLOW, DONTAUDIT, TRANSITION, ROLE_ALLOW])
+    valid_types = {
+        ALLOW,
+        AUDITALLOW,
+        NEVERALLOW,
+        DONTAUDIT,
+        TRANSITION,
+        ROLE_ALLOW,
+    }
+
     for setype in types:
         if setype not in valid_types:
-            raise ValueError("Type has to be in %s" % " ".join(valid_types))
+            raise ValueError(f'Type has to be in {" ".join(valid_types)}')
 
-    source = None
-    if SOURCE in seinfo:
-        source = str(seinfo[SOURCE])
-
-    target = None
-    if TARGET in seinfo:
-        target = str(seinfo[TARGET])
-
-    tclass = None
-    if CLASS in seinfo:
-        tclass = str(seinfo[CLASS]).split(',')
-
+    source = str(seinfo[SOURCE]) if SOURCE in seinfo else None
+    target = str(seinfo[TARGET]) if TARGET in seinfo else None
+    tclass = str(seinfo[CLASS]).split(',') if CLASS in seinfo else None
     toret = []
 
     tertypes = []
@@ -381,7 +382,7 @@ def search(types, seinfo=None):
     if DONTAUDIT in types:
         tertypes.append(DONTAUDIT)
 
-    if len(tertypes) > 0:
+    if tertypes:
         q = TERuleQuery(_pol,
                         ruletype=tertypes,
                         source=source,
@@ -414,9 +415,10 @@ def search(types, seinfo=None):
                           target=target,
                           tclass=tclass)
 
-        for r in q.results():
-            toret.append({'source': str(r.source),
-                          'target': str(r.target)})
+        toret.extend(
+            {'source': str(r.source), 'target': str(r.target)}
+            for r in q.results()
+        )
 
     return toret
 
@@ -456,11 +458,7 @@ def get_conditionals(src, dest, tclass, perm):
 
 def get_conditionals_format_text(cond):
 
-    enabled = False
-    for x in cond:
-        if x['boolean'][0][1]:
-            enabled = True
-            break
+    enabled = any(x['boolean'][0][1] for x in cond)
     return _("-- Allowed %s [ %s ]") % (enabled, " || ".join(set(map(lambda x: "%s=%d" % (x['boolean'][0][0], x['boolean'][0][1]), cond))))
 
 
@@ -469,11 +467,11 @@ def get_types_from_attribute(attribute):
 
 
 def get_file_types(setype):
-    flist = []
     mpaths = {}
-    for f in get_all_file_types():
-        if f.startswith(gen_short_name(setype)):
-            flist.append(f)
+    flist = [
+        f for f in get_all_file_types() if f.startswith(gen_short_name(setype))
+    ]
+
     fcdict = get_fcdict()
     for f in flist:
         try:
@@ -511,15 +509,13 @@ def get_writable_files(setype):
     for i in permlist:
         if i['target'] in attributes:
             continue
-        if "enabled" in i:
-            if not i["enabled"]:
-                continue
+        if "enabled" in i and not i["enabled"]:
+            continue
         if i['target'].endswith("_t"):
             if i['target'] not in file_types:
                 continue
-            if i['target'] not in all_writes:
-                if i['target'] != setype:
-                    all_writes.append(i['target'])
+            if i['target'] not in all_writes and i['target'] != setype:
+                all_writes.append(i['target'])
         else:
             for t in get_types_from_attribute(i['target']):
                 if t not in all_writes:
@@ -537,13 +533,13 @@ def find_file(reg):
     if os.path.exists(reg):
         return [reg]
     try:
-        pat = re.compile(r"%s$" % reg)
+        pat = re.compile(f"{reg}$")
     except:
         print("bad reg:", reg)
         return []
     p = reg
     if p.endswith("(/.*)?"):
-        p = p[:-6] + "/"
+        p = f"{p[:-6]}/"
 
     path = os.path.dirname(p)
 
@@ -554,7 +550,7 @@ def find_file(reg):
         print("try failed got an IndexError")
 
     try:
-        pat = re.compile(r"%s$" % reg)
+        pat = re.compile(f"{reg}$")
         return [x for x in map(lambda x: path + x, os.listdir(path)) if pat.match(x)]
     except:
         return []
@@ -600,7 +596,10 @@ def get_file_equiv_modified(fc_path=selinux.selinux_file_context_path()):
     if file_equiv_modified:
         return file_equiv_modified
     file_equiv_modified = {}
-    file_equiv_modified = read_file_equiv(file_equiv_modified, fc_path + ".subs", modify=True)
+    file_equiv_modified = read_file_equiv(
+        file_equiv_modified, f"{fc_path}.subs", modify=True
+    )
+
     return file_equiv_modified
 
 
@@ -609,7 +608,7 @@ def get_file_equiv(fc_path=selinux.selinux_file_context_path()):
     if file_equiv:
         return file_equiv
     file_equiv = get_file_equiv_modified(fc_path)
-    file_equiv = read_file_equiv(file_equiv, fc_path + ".subs_dist", modify=False)
+    file_equiv = read_file_equiv(file_equiv, f"{fc_path}.subs_dist", modify=False)
     return file_equiv
 
 
@@ -619,7 +618,7 @@ def get_local_file_paths(fc_path=selinux.selinux_file_context_path()):
         return local_files
     local_files = []
     try:
-        with open(fc_path + ".local", "r") as fd:
+        with open(f"{fc_path}.local", "r") as fd:
             fc = fd.readlines()
     except OSError as e:
         if e.errno != errno.ENOENT:
@@ -630,11 +629,7 @@ def get_local_file_paths(fc_path=selinux.selinux_file_context_path()):
         if len(rec) == 0:
             continue
         try:
-            if len(rec) > 2:
-                ftype = trans_file_type_str[rec[1]]
-            else:
-                ftype = "a"
-
+            ftype = trans_file_type_str[rec[1]] if len(rec) > 2 else "a"
             local_files.append((rec[0], ftype))
         except KeyError:
             pass
@@ -645,15 +640,13 @@ def get_fcdict(fc_path=selinux.selinux_file_context_path()):
     global fcdict
     if fcdict:
         return fcdict
-    fd = open(fc_path, "r")
-    fc = fd.readlines()
-    fd.close()
-    fd = open(fc_path + ".homedirs", "r")
-    fc += fd.readlines()
-    fd.close()
+    with open(fc_path, "r") as fd:
+        fc = fd.readlines()
+    with open(f"{fc_path}.homedirs", "r") as fd:
+        fc += fd.readlines()
     fcdict = {}
     try:
-        with open(fc_path + ".local", "r") as fd:
+        with open(f"{fc_path}.local", "r") as fd:
             fc += fd.readlines()
     except OSError as e:
         if e.errno != errno.ENOENT:
@@ -662,11 +655,7 @@ def get_fcdict(fc_path=selinux.selinux_file_context_path()):
     for i in fc:
         rec = i.split()
         try:
-            if len(rec) > 2:
-                ftype = trans_file_type_str[rec[1]]
-            else:
-                ftype = "a"
-
+            ftype = trans_file_type_str[rec[1]] if len(rec) > 2 else "a"
             t = rec[-1].split(":")[2]
             if t in fcdict:
                 fcdict[t]["regex"].append(rec[0])
@@ -717,9 +706,7 @@ def get_boolean_rules(setype, boolean):
     for p in permlist:
         if "boolean" in p:
             try:
-                for b in p["boolean"]:
-                    if boolean in b:
-                        boollist.append(p)
+                boollist.extend(p for b in p["boolean"] if boolean in b)
             except:
                 pass
     return boollist
@@ -808,12 +795,11 @@ def get_methods():
     gen_interfaces()
     fn = defaults.interface_info()
     try:
-        fd = open(fn)
+        with open(fn) as fd:
     # List of per_role_template interfaces
-        ifs = interfaces.InterfaceSet()
-        ifs.from_file(fd)
-        methods = list(ifs.interfaces.keys())
-        fd.close()
+            ifs = interfaces.InterfaceSet()
+            ifs.from_file(fd)
+            methods = list(ifs.interfaces.keys())
     except:
         sys.stderr.write("could not open interface info [%s]\n" % fn)
         sys.exit(1)
@@ -866,10 +852,13 @@ def get_all_entrypoint_domains():
     all_domains = []
     types = sorted(get_all_types())
     for i in types:
-        m = re.findall("(.*)%s" % "_exec_t$", i)
-        if len(m) > 0:
-            if len(re.findall("(.*)%s" % "_initrc$", m[0])) == 0 and m[0] not in all_domains:
-                all_domains.append(m[0])
+        m = re.findall('(.*)_exec_t$', i)
+        if (
+            len(m) > 0
+            and len(re.findall('(.*)_initrc$', m[0])) == 0
+            and m[0] not in all_domains
+        ):
+            all_domains.append(m[0])
     return all_domains
 
 
@@ -902,7 +891,7 @@ def gen_port_dict():
         if i['low'] == i['high']:
             port = str(i['low'])
         else:
-            port = "%s-%s" % (str(i['low']), str(i['high']))
+            port = f"{str(i['low'])}-{str(i['high'])}"
 
         if (i['type'], i['protocol']) in portrecs:
             portrecs[(i['type'], i['protocol'])].append(port)
@@ -953,9 +942,8 @@ def get_login_mappings():
     if login_mappings:
         return login_mappings
 
-    fd = open(selinux.selinux_usersconf_path(), "r")
-    buf = fd.read()
-    fd.close()
+    with open(selinux.selinux_usersconf_path(), "r") as fd:
+        buf = fd.read()
     login_mappings = []
     for b in buf.split("\n"):
         b = b.strip()

@@ -131,11 +131,11 @@ class loginsPage(semanagePage):
         store, iter = self.view.get_selection().get_selected()
         try:
             login = store.get_value(iter, 0)
-            if login == "root" or login == "__default__":
+            if login in ["root", "__default__"]:
                 raise ValueError(_("Login '%s' is required") % login)
 
             self.wait()
-            (rc, out) = getstatusoutput("semanage login -d %s" % login)
+            (rc, out) = getstatusoutput(f"semanage login -d {login}")
             self.ready()
             if rc != 0:
                 self.error(out)
@@ -154,7 +154,10 @@ class loginsPage(semanagePage):
         iter = self.loginsSelinuxUserCombo.get_active_iter()
         seuser = list_model.get_value(iter, 0)
         self.wait()
-        (rc, out) = getstatusoutput("semanage login -a -s %s -r %s %s" % (seuser, serange, target))
+        (rc, out) = getstatusoutput(
+            f"semanage login -a -s {seuser} -r {serange} {target}"
+        )
+
         self.ready()
         if rc != 0:
             self.error(out)
@@ -174,7 +177,10 @@ class loginsPage(semanagePage):
         iter = self.loginsSelinuxUserCombo.get_active_iter()
         seuser = list_model.get_value(iter, 0)
         self.wait()
-        (rc, out) = getstatusoutput("semanage login -m -s %s -r %s %s" % (seuser, serange, target))
+        (rc, out) = getstatusoutput(
+            f"semanage login -m -s {seuser} -r {serange} {target}"
+        )
+
         self.ready()
         if rc != 0:
             self.error(out)

@@ -60,9 +60,7 @@ class MatchList:
     def best(self):
         if len(self.children):
             return self.children[0]
-        if len(self.bastards):
-            return self.bastards[0]
-        return None
+        return self.bastards[0] if len(self.bastards) else None
 
     def __len__(self):
         # Only return the length of the matches so
@@ -94,20 +92,14 @@ class AccessMatcher:
     def __init__(self, perm_maps=None):
         self.type_penalty = 10
         self.obj_penalty = 10
-        if perm_maps:
-            self.perm_maps = perm_maps
-        else:
-            self.perm_maps = objectmodel.PermMappings()
+        self.perm_maps = perm_maps or objectmodel.PermMappings()
         # We want a change in the information flow direction
         # to be a strong penalty - stronger than access to
         # a few unrelated types.
         self.info_dir_penalty = 100
 
     def type_distance(self, a, b):
-        if a == b or access.is_idparam(b):
-            return 0
-        else:
-            return -self.type_penalty
+        return 0 if a == b or access.is_idparam(b) else -self.type_penalty
 
 
     def perm_distance(self, av_req, av_prov):
@@ -182,16 +174,12 @@ class AccessMatcher:
             pdist = self.perm_distance(req, prov)
 
         # Combine the perm and other distance
-        if dist < 0:
-            if pdist < 0:
-                return dist + pdist
-            else:
-                return dist - pdist
-        elif dist >= 0:
-            if pdist < 0:
-                return pdist - dist
-            else:
-                return dist + pdist
+        if dist < 0 and pdist < 0 or dist >= 0 and pdist >= 0:
+            return dist + pdist
+        elif dist < 0:
+            return dist - pdist
+        else:
+            return pdist - dist
 
     def av_set_match(self, av_set, av):
         """
@@ -202,19 +190,22 @@ class AccessMatcher:
         # Get the distance for each access vector
         for x in av_set:
             tmp = self.av_distance(av, x)
-            if dist is None:
-                dist = tmp
-            elif tmp >= 0:
-                if dist >= 0:
-                    dist += tmp
-                else:
-                    dist = tmp + -dist
-            else:
-                if dist < 0:
-                    dist += tmp
-                else:
-                    dist -= tmp
+            if (
+                dist is not None
+                and tmp >= 0
+                and dist >= 0
+                or dist is not None
+                and tmp < 0
+                and dist < 0
+            ):
+                dist += tmp
+            elif dist is not None and tmp >= 0:
+                dist = tmp + -dist
+            elif dist is not None:
+                dist -= tmp
 
+            else:
+                dist = tmp
         # Penalize for information flow - we want to prevent the
         # addition of a write if the requested is read none. We are
         # much less concerned about the reverse.
@@ -224,7 +215,7 @@ class AccessMatcher:
             av_set.info_dir = objectmodel.FLOW_NONE
             for x in av_set:
                 av_set.info_dir = av_set.info_dir | \
-                                  self.perm_maps.getdefault_direction(x.obj_class, x.perms)
+                                      self.perm_maps.getdefault_direction(x.obj_class, x.perms)
         if (av_dir & objectmodel.FLOW_WRITE == 0) and (av_set.info_dir & objectmodel.FLOW_WRITE):
             if dist < 0:
                 dist -= self.info_dir_penalty

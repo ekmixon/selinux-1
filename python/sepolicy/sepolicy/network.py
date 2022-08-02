@@ -35,7 +35,7 @@ def get_types(src, tclass, perm, check_bools=False):
 def get_network_connect(src, protocol, perm, check_bools=False):
     portrecs, portrecsbynum = sepolicy.gen_port_dict()
     d = {}
-    tlist = get_types(src, "%s_socket" % protocol, [perm], check_bools)
+    tlist = get_types(src, f"{protocol}_socket", [perm], check_bools)
     if len(tlist) > 0:
         d[(src, protocol, perm)] = []
         for i in tlist:

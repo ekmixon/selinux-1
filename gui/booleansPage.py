@@ -176,7 +176,7 @@ class booleansPage:
             return
         try:
             self.wait()
-            (rc, out) = getstatusoutput("semanage boolean -d %s" % boolean)
+            (rc, out) = getstatusoutput(f"semanage boolean -d {boolean}")
 
             self.ready()
             if rc != 0:

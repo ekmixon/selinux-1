@@ -91,9 +91,7 @@ class modulesPage(semanagePage):
             p2 = int(treemodel.get_value(iter1, 1))
             if p1 > p2:
                 return 1
-            if p1 == p2:
-                return 0
-            return -1
+            return 0 if p1 == p2 else -1
         except:
             return 0
 
@@ -128,7 +126,7 @@ class modulesPage(semanagePage):
         priority = store.get_value(iter, 1)
         try:
             self.wait()
-            status, output = getstatusoutput("semodule -X %s -r %s" % (priority, module))
+            status, output = getstatusoutput(f"semodule -X {priority} -r {module}")
             self.ready()
             if status != 0:
                 self.error(output)
@@ -193,7 +191,7 @@ class modulesPage(semanagePage):
     def add(self, file):
         try:
             self.wait()
-            status, output = getstatusoutput("semodule -i %s" % file)
+            status, output = getstatusoutput(f"semodule -i {file}")
             self.ready()
             if status != 0:
                 self.error(output)

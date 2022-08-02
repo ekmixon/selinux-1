@@ -145,7 +145,7 @@ class Node(PolicyBase):
             return self.to_string()
 
     def __repr__(self):
-        return "<%s(%s)>" % (self.__class__.__name__, self.to_string())
+        return f"<{self.__class__.__name__}({self.to_string()})>"
 
     def to_string(self):
         return ""
@@ -162,7 +162,7 @@ class Leaf(PolicyBase):
             return self.to_string()
 
     def __repr__(self):
-        return "<%s(%s)>" % (self.__class__.__name__, self.to_string())
+        return f"<{self.__class__.__name__}({self.to_string()})>"
 
     def to_string(self):
         return ""
@@ -184,13 +184,9 @@ def walktree(node, depthfirst=True, showdepth=False, type=None):
     """
     # We control depth first / versus breadth first by
     # how we pop items off of the node stack.
-    if depthfirst:
-        index = -1
-    else:
-        index = 0
-
+    index = -1 if depthfirst else 0
     stack = [(node, 0)]
-    while len(stack) > 0:
+    while stack:
         cur, depth = stack.pop(index)
         if showdepth:
             yield cur, depth
@@ -234,10 +230,7 @@ def list_to_space_str(s, cont=('{', '}')):
     if l < 1:
         raise ValueError("cannot convert 0 len set to string")
     str = " ".join(s)
-    if l == 1:
-        return str
-    else:
-        return cont[0] + " " + str + " " + cont[1]
+    return str if l == 1 else f"{cont[0]} {str} {cont[1]}"
 
 def list_to_comma_str(s):
     l = len(s)
@@ -294,16 +287,12 @@ class SecurityContext(Leaf):
 
         fields = context.split(":")
         if len(fields) < 3:
-            raise ValueError("context string [%s] not in a valid format" % context)
+            raise ValueError(f"context string [{context}] not in a valid format")
 
         self.user = fields[0]
         self.role = fields[1]
         self.type = fields[2]
-        if len(fields) > 3:
-            # FUTURE - normalize level fields to allow more comparisons to succeed.
-            self.level = ':'.join(fields[3:])
-        else:
-            self.level = None
+        self.level = ':'.join(fields[3:]) if len(fields) > 3 else None
 
     def __eq__(self, other):
         """Compare two SecurityContext objects - all fields must be exactly the
@@ -376,13 +365,13 @@ class XpermSet():
 
         i = 0
         while i < len(self.ranges):
-            while i + 1 < len(self.ranges):
-                if self.ranges[i + 1][0] <= self.ranges[i][1] + 1:
-                    self.ranges[i] = (self.ranges[i][0], max(self.ranges[i][1],
-                                                             self.ranges[i + 1][1]))
-                    del self.ranges[i + 1]
-                else:
-                    break
+            while (
+                i + 1 < len(self.ranges)
+                and not self.ranges[i + 1][0] > self.ranges[i][1] + 1
+            ):
+                self.ranges[i] = (self.ranges[i][0], max(self.ranges[i][1],
+                                                         self.ranges[i + 1][1]))
+                del self.ranges[i + 1]
             i += 1
 
     def extend(self, s):
@@ -409,7 +398,11 @@ class XpermSet():
         if len(self.ranges) == 1 and self.ranges[0][0] == self.ranges[0][1]:
             return compl + hex(self.ranges[0][0])
 
-        vals = map(lambda x: hex(x[0]) if x[0] == x[1] else "%s-%s" % (hex(x[0]), hex(x[1]), ), self.ranges)
+        vals = map(
+            lambda x: hex(x[0]) if x[0] == x[1] else f"{hex(x[0])}-{hex(x[1])}",
+            self.ranges,
+        )
+
 
         return "%s{ %s }" % (compl, " ".join(vals))
 
@@ -426,7 +419,7 @@ class TypeAttribute(Leaf):
         self.attributes = IdSet()
 
     def to_string(self):
-        return "typeattribute %s %s;" % (self.type, self.attributes.to_comma_str())
+        return f"typeattribute {self.type} {self.attributes.to_comma_str()};"
 
 class RoleAttribute(Leaf):
     """SElinux roleattribute statement.
@@ -439,7 +432,7 @@ class RoleAttribute(Leaf):
         self.roleattributes = IdSet()
 
     def to_string(self):
-        return "roleattribute %s %s;" % (self.role, self.roleattributes.to_comma_str())
+        return f"roleattribute {self.role} {self.roleattributes.to_comma_str()};"
 
 
 class Role(Leaf):
@@ -449,10 +442,7 @@ class Role(Leaf):
         self.types = IdSet()
 
     def to_string(self):
-        s = ""
-        for t in self.types:
-            s += "role %s types %s;\n" % (self.role, t)
-        return s
+        return "".join("role %s types %s;\n" % (self.role, t) for t in self.types)
 
 class Type(Leaf):
     def __init__(self, name="", parent=None):
@@ -462,12 +452,12 @@ class Type(Leaf):
         self.aliases = IdSet()
 
     def to_string(self):
-        s = "type %s" % self.name
+        s = f"type {self.name}"
         if len(self.aliases) > 0:
-            s = s + "alias %s" % self.aliases.to_space_str()
+            s = s + f"alias {self.aliases.to_space_str()}"
         if len(self.attributes) > 0:
-            s = s + ", %s" % self.attributes.to_comma_str()
-        return s + ";"
+            s = s + f", {self.attributes.to_comma_str()}"
+        return f"{s};"
 
 class TypeAlias(Leaf):
     def __init__(self, parent=None):
@@ -476,7 +466,7 @@ class TypeAlias(Leaf):
         self.aliases = IdSet()
 
     def to_string(self):
-        return "typealias %s alias %s;" % (self.type, self.aliases.to_space_str())
+        return f"typealias {self.type} alias {self.aliases.to_space_str()};"
 
 class Attribute(Leaf):
     def __init__(self, name="", parent=None):
@@ -484,7 +474,7 @@ class Attribute(Leaf):
         self.name = name
 
     def to_string(self):
-        return "attribute %s;" % self.name
+        return f"attribute {self.name};"
 
 class Attribute_Role(Leaf):
     def __init__(self, name="", parent=None):
@@ -492,7 +482,7 @@ class Attribute_Role(Leaf):
         self.name = name
 
     def to_string(self):
-        return "attribute_role %s;" % self.name
+        return f"attribute_role {self.name};"
 
 
 # Classes representing rules
@@ -555,11 +545,7 @@ class AVRule(Leaf):
         that is a valid policy language representation (assuming
         that the types, object class, etc. are valie).
         """
-        return "%s %s %s:%s %s;" % (self.__rule_type_str(),
-                                     self.src_types.to_space_str(),
-                                     self.tgt_types.to_space_str(),
-                                     self.obj_classes.to_space_str(),
-                                     self.perms.to_space_str())
+        return f"{self.__rule_type_str()} {self.src_types.to_space_str()} {self.tgt_types.to_space_str()}:{self.obj_classes.to_space_str()} {self.perms.to_space_str()};"
 
 class AVExtRule(Leaf):
     """Extended permission access vector rule.
@@ -612,12 +598,7 @@ class AVExtRule(Leaf):
         a valid policy language representation (assuming that
         the types, object class, etc. are valid).
         """
-        return "%s %s %s:%s %s %s;" % (self.__rule_type_str(),
-                                     self.src_types.to_space_str(),
-                                     self.tgt_types.to_space_str(),
-                                     self.obj_classes.to_space_str(),
-                                     self.operation,
-                                     self.xperms.to_string())
+        return f"{self.__rule_type_str()} {self.src_types.to_space_str()} {self.tgt_types.to_space_str()}:{self.obj_classes.to_space_str()} {self.operation} {self.xperms.to_string()};"
 
 class TypeRule(Leaf):
     """SELinux type rules.
@@ -647,11 +628,7 @@ class TypeRule(Leaf):
             return "type_member"
 
     def to_string(self):
-        return "%s %s %s:%s %s;" % (self.__rule_type_str(),
-                                     self.src_types.to_space_str(),
-                                     self.tgt_types.to_space_str(),
-                                     self.obj_classes.to_space_str(),
-                                     self.dest_type)
+        return f"{self.__rule_type_str()} {self.src_types.to_space_str()} {self.tgt_types.to_space_str()}:{self.obj_classes.to_space_str()} {self.dest_type};"
 class TypeBound(Leaf):
     """SElinux typebound statement.
 
@@ -663,7 +640,7 @@ class TypeBound(Leaf):
         self.tgt_types = IdSet()
 
     def to_string(self):
-        return "typebounds %s %s;" % (self.type, self.tgt_types.to_comma_str())
+        return f"typebounds {self.type} {self.tgt_types.to_comma_str()};"
 
 
 class RoleAllow(Leaf):
@@ -673,8 +650,7 @@ class RoleAllow(Leaf):
         self.tgt_roles = IdSet()
 
     def to_string(self):
-        return "allow %s %s;" % (self.src_roles.to_comma_str(),
-                                 self.tgt_roles.to_comma_str())
+        return f"allow {self.src_roles.to_comma_str()} {self.tgt_roles.to_comma_str()};"
 
 class RoleType(Leaf):
     def __init__(self, parent=None):
@@ -683,10 +659,7 @@ class RoleType(Leaf):
         self.types = IdSet()
 
     def to_string(self):
-        s = ""
-        for t in self.types:
-            s += "role %s types %s;\n" % (self.role, t)
-        return s
+        return "".join("role %s types %s;\n" % (self.role, t) for t in self.types)
 
 class ModuleDeclaration(Leaf):
     def __init__(self, parent=None):
@@ -697,9 +670,9 @@ class ModuleDeclaration(Leaf):
 
     def to_string(self):
         if self.refpolicy:
-            return "policy_module(%s, %s)" % (self.name, self.version)
+            return f"policy_module({self.name}, {self.version})"
         else:
-            return "module %s %s;" % (self.name, self.version)
+            return f"module {self.name} {self.version};"
 
 class Conditional(Node):
     def __init__(self, parent=None):
@@ -716,11 +689,8 @@ class Bool(Leaf):
         self.state = False
 
     def to_string(self):
-        s = "bool %s " % self.name
-        if s.state:
-            return s + "true"
-        else:
-            return s + "false"
+        s = f"bool {self.name} "
+        return f"{s}true" if s.state else f"{s}false"
 
 class InitialSid(Leaf):
     def __init(self, parent=None):
@@ -729,7 +699,7 @@ class InitialSid(Leaf):
         self.context = None
 
     def to_string(self):
-        return "sid %s %s" % (self.name, str(self.context))
+        return f"sid {self.name} {str(self.context)}"
 
 class GenfsCon(Leaf):
     def __init__(self, parent=None):
@@ -739,7 +709,7 @@ class GenfsCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "genfscon %s %s %s" % (self.filesystem, self.path, str(self.context))
+        return f"genfscon {self.filesystem} {self.path} {str(self.context)}"
 
 class FilesystemUse(Leaf):
     XATTR = 1
@@ -761,7 +731,7 @@ class FilesystemUse(Leaf):
         elif self.type == self.TASK:
             s = "fs_use_task "
 
-        return "%s %s %s;" % (s, self.filesystem, str(self.context))
+        return f"{s} {self.filesystem} {str(self.context)};"
 
 class PortCon(Leaf):
     def __init__(self, parent=None):
@@ -771,7 +741,7 @@ class PortCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "portcon %s %s %s" % (self.port_type, self.port_number, str(self.context))
+        return f"portcon {self.port_type} {self.port_number} {str(self.context)}"
 
 class NodeCon(Leaf):
     def __init__(self, parent=None):
@@ -781,7 +751,7 @@ class NodeCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "nodecon %s %s %s" % (self.start, self.end, str(self.context))
+        return f"nodecon {self.start} {self.end} {str(self.context)}"
 
 class NetifCon(Leaf):
     def __init__(self, parent=None):
@@ -791,8 +761,7 @@ class NetifCon(Leaf):
         self.packet_context = None
 
     def to_string(self):
-        return "netifcon %s %s %s" % (self.interface, str(self.interface_context),
-                                   str(self.packet_context))
+        return f"netifcon {self.interface} {str(self.interface_context)} {str(self.packet_context)}"
 class PirqCon(Leaf):
     def __init__(self, parent=None):
         Leaf.__init__(self, parent)
@@ -800,7 +769,7 @@ class PirqCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "pirqcon %s %s" % (self.pirq_number, str(self.context))
+        return f"pirqcon {self.pirq_number} {str(self.context)}"
 
 class IomemCon(Leaf):
     def __init__(self, parent=None):
@@ -809,7 +778,7 @@ class IomemCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "iomemcon %s %s" % (self.device_mem, str(self.context))
+        return f"iomemcon {self.device_mem} {str(self.context)}"
 
 class IoportCon(Leaf):
     def __init__(self, parent=None):
@@ -818,7 +787,7 @@ class IoportCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "ioportcon %s %s" % (self.ioport, str(self.context))
+        return f"ioportcon {self.ioport} {str(self.context)}"
 
 class PciDeviceCon(Leaf):
     def __init__(self, parent=None):
@@ -827,7 +796,7 @@ class PciDeviceCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "pcidevicecon %s %s" % (self.device, str(self.context))
+        return f"pcidevicecon {self.device} {str(self.context)}"
 
 class DeviceTreeCon(Leaf):
     def __init__(self, parent=None):
@@ -836,14 +805,14 @@ class DeviceTreeCon(Leaf):
         self.context = None
 
     def to_string(self):
-        return "devicetreecon %s %s" % (self.path, str(self.context))
+        return f"devicetreecon {self.path} {str(self.context)}"
 
 # Reference policy specific types
 
 def print_tree(head):
     for node, depth in walktree(head, showdepth=True):
         s = ""
-        for i in range(depth):
+        for _ in range(depth):
             s = s + "\t"
         print(s + str(node))
 
@@ -873,7 +842,7 @@ class Interface(Node):
         self.name = name
 
     def to_string(self):
-        return "[Interface name: %s]" % self.name
+        return f"[Interface name: {self.name}]"
 
 class TunablePolicy(Node):
     def __init__(self, parent=None):
@@ -889,7 +858,7 @@ class Template(Node):
         self.name = name
 
     def to_string(self):
-        return "[Template name: %s]" % self.name
+        return f"[Template name: {self.name}]"
 
 class IfDef(Node):
     def __init__(self, name="", parent=None):
@@ -897,7 +866,7 @@ class IfDef(Node):
         self.name = name
 
     def to_string(self):
-        return "[Ifdef name: %s]" % self.name
+        return f"[Ifdef name: {self.name}]"
 
 class InterfaceCall(Leaf):
     def __init__(self, ifname="", parent=None):
@@ -911,26 +880,14 @@ class InterfaceCall(Leaf):
             return False
         if len(self.args) != len(other.args):
             return False
-        for a,b in zip(self.args, other.args):
-            if a != b:
-                return False
-        return True
+        return all(a == b for a, b in zip(self.args, other.args))
 
     def to_string(self):
-        s = "%s(" % self.ifname
-        i = 0
-        for a in self.args:
-            if isinstance(a, list):
-                str = list_to_space_str(a)
-            else:
-                str = a
-                
-            if i != 0:
-                s = s + ", %s" % str
-            else:
-                s = s + str
-            i += 1
-        return s + ")"
+        s = f"{self.ifname}("
+        for i, a in enumerate(self.args):
+            str = list_to_space_str(a) if isinstance(a, list) else a
+            s = s + f", {str}" if i != 0 else s + str
+        return f"{s})"
 
 class OptionalPolicy(Node):
     def __init__(self, parent=None):
@@ -992,25 +949,20 @@ class Require(Leaf):
 
 
     def to_string(self):
-        s = []
-        s.append("require {")
-        for type in self.types:
-            s.append("\ttype %s;" % type)
-        for obj_class, perms in self.obj_classes.items():
-            s.append("\tclass %s %s;" % (obj_class, perms.to_space_str()))
-        for role in self.roles:
-            s.append("\trole %s;" % role)
-        for bool in self.data:
-            s.append("\tbool %s;" % bool)
-        for user in self.users:
-            s.append("\tuser %s;" % user)
+        s = ["require {"]
+        s.extend("\ttype %s;" % type for type in self.types)
+        s.extend(
+            "\tclass %s %s;" % (obj_class, perms.to_space_str())
+            for obj_class, perms in self.obj_classes.items()
+        )
+
+        s.extend("\trole %s;" % role for role in self.roles)
+        s.extend("\tbool %s;" % bool for bool in self.data)
+        s.extend("\tuser %s;" % user for user in self.users)
         s.append("}")
 
         # Handle empty requires
-        if len(s) == 2:
-            return ""
-
-        return "\n".join(s)
+        return "" if len(s) == 2 else "\n".join(s)
 
 
 class ObjPermSet:
@@ -1027,25 +979,17 @@ class ClassMap:
         self.perms = perms
 
     def to_string(self):
-        return self.obj_class + ": " + self.perms
+        return f"{self.obj_class}: {self.perms}"
 
 class Comment:
     def __init__(self, l=None):
-        if l:
-            self.lines = l
-        else:
-            self.lines = []
+        self.lines = l or []
 
     def to_string(self):
-        # If there are no lines, treat this as a spacer between
-        # policy statements and return a new line.
         if len(self.lines) == 0:
             return ""
-        else:
-            out = []
-            for line in self.lines:
-                out.append("#" + line)
-            return "\n".join(out)
+        out = [f"#{line}" for line in self.lines]
+        return "\n".join(out)
 
     def merge(self, other):
         if len(other.lines):

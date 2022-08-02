@@ -50,7 +50,7 @@ except ImportError:
 
 
 def errorExit(error):
-    sys.stderr.write("%s: " % sys.argv[0])
+    sys.stderr.write(f"{sys.argv[0]}: ")
     sys.stderr.write("%s\n" % error)
     sys.stderr.flush()
     sys.exit(1)
@@ -61,7 +61,7 @@ def verify_users(users):
         try:
             pwd.getpwnam(u)
         except KeyError:
-            error("User %s does not exist" % u)
+            error(f"User {u} does not exist")
 
 
 def chcat_user_add(newcat, users):
@@ -89,9 +89,9 @@ def chcat_user_add(newcat, users):
                 cats.append(i)
 
         if len(cats) > 0:
-            new_serange = "%s-%s:%s" % (serange[0], top[0], ",".join(cats))
+            new_serange = f'{serange[0]}-{top[0]}:{",".join(cats)}'
         else:
-            new_serange = "%s-%s" % (serange[0], top[0])
+            new_serange = f"{serange[0]}-{top[0]}"
 
         if add_ind:
             cmd = ["semanage", "login", "-a", "-r", new_serange, "-s", user[0], u]
@@ -131,11 +131,11 @@ def chcat_add(orig, newcat, objects, login_ind):
             cats.sort()
             cat_string = cats[0]
             for c in cats[1:]:
-                cat_string = "%s,%s" % (cat_string, c)
+                cat_string = f"{cat_string},{c}"
         else:
             cat_string = cat
 
-        cmd = ["chcon", "-l", "%s:%s" % (sensitivity, cat_string), f]
+        cmd = ["chcon", "-l", f"{sensitivity}:{cat_string}", f]
         try:
             subprocess.check_call(cmd, stderr=subprocess.STDOUT, shell=False)
         except subprocess.CalledProcessError:
@@ -168,9 +168,9 @@ def chcat_user_remove(newcat, users):
                 cats.remove(i)
 
         if len(cats) > 0:
-            new_serange = "%s-%s:%s" % (serange[0], top[0], ",".join(cats))
+            new_serange = f'{serange[0]}-{top[0]}:{",".join(cats)}'
         else:
-            new_serange = "%s-%s" % (serange[0], top[0])
+            new_serange = f"{serange[0]}-{top[0]}"
 
         if add_ind:
             cmd = ["semanage", "login", "-a", "-r", new_serange, "-s", user[0], u]
@@ -212,18 +212,14 @@ def chcat_remove(orig, newcat, objects, login_ind):
             if len(clist) > 1:
                 cat = clist[1]
                 for c in clist[2:]:
-                    cat = "%s,%s" % (cat, c)
+                    cat = f"{cat},{c}"
             else:
                 cat = ""
         else:
             print(_("%s is not in %s") % (f, orig))
             continue
 
-        if len(cat) == 0:
-            new_serange = sensitivity
-        else:
-            new_serange = '%s:%s' % (sensitivity, cat)
-
+        new_serange = sensitivity if len(cat) == 0 else f'{sensitivity}:{cat}'
         cmd = ["chcon", "-l", new_serange, f]
         try:
             subprocess.check_call(cmd, stderr=subprocess.STDOUT, shell=False)
@@ -245,7 +241,7 @@ def chcat_user_replace(newcat, users):
             add_ind = 1
             user = seusers["__default__"]
         serange = user[1].split("-")
-        new_serange = "%s-%s:%s" % (serange[0], newcat[0], ",".join(newcat[1:]))
+        new_serange = f'{serange[0]}-{newcat[0]}:{",".join(newcat[1:])}'
         if new_serange[-1:] == ":":
             new_serange = new_serange[:-1]
 
@@ -268,9 +264,9 @@ def chcat_replace(newcat, objects, login_ind):
     if len(newcat) == 1:
         new_serange = newcat[0]
     else:
-        new_serange = "%s:%s" % (newcat[0], newcat[1])
+        new_serange = f"{newcat[0]}:{newcat[1]}"
         for cat in newcat[2:]:
-            new_serange = '%s,%s' % (new_serange, cat)
+            new_serange = f'{new_serange},{cat}'
 
     cmd = ["chcon", "-l", new_serange] + objects
     try:
@@ -285,7 +281,7 @@ def check_replace(cats):
     plus_ind = 0
     replace_ind = 0
     for c in cats:
-        if len(c) > 0 and (c[0] == "+" or c[0] == "-"):
+        if len(c) > 0 and c[0] in ["+", "-"]:
             if replace_ind:
                 raise ValueError(_("Can not combine +/- with other types of categories"))
             plus_ind = 1
@@ -297,7 +293,11 @@ def check_replace(cats):
 
 
 def isSensitivity(sensitivity):
-    if sensitivity[0] == "s" and sensitivity[1:].isdigit() and int(sensitivity[1:]) in range(0, 16):
+    if (
+        sensitivity[0] == "s"
+        and sensitivity[1:].isdigit()
+        and int(sensitivity[1:]) in range(16)
+    ):
         return 1
     else:
         return 0
@@ -313,12 +313,9 @@ def expandCats(cats):
                     x = ("c%d" % k)
                     if x not in newcats:
                         newcats.append(x)
-            else:
-                if i not in newcats:
-                    newcats.append(i)
-    if len(newcats) > 25:
-        return cats
-    return newcats
+            elif i not in newcats:
+                newcats.append(i)
+    return cats if len(newcats) > 25 else newcats
 
 
 def translate(cats):
@@ -327,24 +324,20 @@ def translate(cats):
         newcat.append("s0")
         return newcat
     for c in cats:
-        (rc, raw) = selinux.selinux_trans_to_raw_context("a:b:c:%s" % c)
+        (rc, raw) = selinux.selinux_trans_to_raw_context(f"a:b:c:{c}")
         rlist = raw.split(":")[3:]
         tlist = []
         if isSensitivity(rlist[0]) == 0:
             tlist.append("s0")
-            for i in expandCats(rlist):
-                tlist.append(i)
+            tlist.extend(iter(expandCats(rlist)))
         else:
             tlist.append(rlist[0])
-            for i in expandCats(rlist[1:]):
-                tlist.append(i)
-        if len(newcat) == 0:
+            tlist.extend(iter(expandCats(rlist[1:])))
+        if not newcat:
             newcat.append(tlist[0])
-        else:
-            if newcat[0] != tlist[0]:
-                raise ValueError(_("Can not have multiple sensitivities"))
-        for i in tlist[1:]:
-            newcat.append(i)
+        elif newcat[0] != tlist[0]:
+            raise ValueError(_("Can not have multiple sensitivities"))
+        newcat.extend(iter(tlist[1:]))
     return newcat
 
 
@@ -364,14 +357,13 @@ def usage():
 
 
 def listcats():
-    fd = open(selinux.selinux_translations_path())
-    for l in fd.read().split("\n"):
-        if l.startswith("#"):
-            continue
-        if l.find("=") != -1:
-            rec = l.split("=")
-            print("%-30s %s" % tuple(rec))
-    fd.close()
+    with open(selinux.selinux_translations_path()) as fd:
+        for l in fd.read().split("\n"):
+            if l.startswith("#"):
+                continue
+            if l.find("=") != -1:
+                rec = l.split("=")
+                print("%-30s %s" % tuple(rec))
     return 0
 
 
@@ -387,13 +379,13 @@ def listusercats(users):
         cats = seobject.translate(selinux.getseuserbyname(u)[2])
         cats = cats.split("-")
         if len(cats) > 1 and cats[1] != "s0":
-            print("%s: %s" % (u, cats[1]))
+            print(f"{u}: {cats[1]}")
         else:
-            print("%s: %s" % (u, cats[0]))
+            print(f"{u}: {cats[0]}")
 
 
 def error(msg):
-    print("%s: %s" % (sys.argv[0], msg))
+    print(f"{sys.argv[0]}: {msg}")
     sys.exit(1)
 
 
@@ -416,13 +408,13 @@ if __name__ == '__main__':
                                      'delete'])
 
         for o, a in gopts:
-            if o == "-h" or o == "--help":
+            if o in ["-h", "--help"]:
                 usage()
-            if o == "-d" or o == "--delete":
+            if o in ["-d", "--delete"]:
                 delete_ind = 1
-            if o == "-L" or o == "--list":
+            if o in ["-L", "--list"]:
                 list_ind = 1
-            if o == "-l" or o == "--login":
+            if o in ["-l", "--login"]:
                 login_ind = 1
 
         if list_ind == 0 and len(cmds) < 1:
@@ -458,17 +450,13 @@ if __name__ == '__main__':
             errors = chcat_replace(translate(cats), objects, login_ind)
         else:
             for c in cats:
-                l = []
-                l.append(c[1:])
+                l = [c[1:]]
                 if len(c) > 0 and c[0] == "+":
                     errors += chcat_add(c[1:], translate(l), objects, login_ind)
                     continue
                 if len(c) > 0 and c[0] == "-":
                     errors += chcat_remove(c[1:], translate(l), objects, login_ind)
                     continue
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         error(e)
-    except OSError as e:
-        error(e)
-
     sys.exit(errors)

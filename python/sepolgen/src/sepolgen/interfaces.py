@@ -43,7 +43,7 @@ class Param:
 
     def set_name(self, name):
         if not access.is_idparam(name):
-            raise ValueError("Name [%s] is not a param" % name)
+            raise ValueError(f"Name [{name}] is not a param")
         self.__name = name
 
     def get_name(self):
@@ -54,8 +54,7 @@ class Param:
     num = property(fget=lambda self: int(self.name[1:]))
 
     def __repr__(self):
-        return "<sepolgen.policygen.Param instance [%s, %s, %s]>" % \
-               (self.name, refpolicy.field_to_str[self.type], " ".join(self.obj_classes))
+        return f'<sepolgen.policygen.Param instance [{self.name}, {refpolicy.field_to_str[self.type]}, {" ".join(self.obj_classes)}]>'
 
 
 # Helper for extract perms
@@ -66,17 +65,16 @@ def __param_insert(name, type, av, params):
         # The entries are identical - we're done
         if type == p.type:
             return
+        #print name, refpolicy.field_to_str[p.type]
+        # If the object is not implicitly typed, tell the
+        # caller there is a likely conflict.
+        ret = 1
         # Handle implicitly typed objects (like process)
-        if (type == refpolicy.SRC_TYPE or type == refpolicy.TGT_TYPE) and \
-           (p.type == refpolicy.TGT_TYPE or p.type == refpolicy.SRC_TYPE):
-            #print name, refpolicy.field_to_str[p.type]
-            # If the object is not implicitly typed, tell the
-            # caller there is a likely conflict.
-            ret = 1
-            if av:
-                avobjs = [av.obj_class]
-            else:
-                avobjs = []
+        if type in [refpolicy.SRC_TYPE, refpolicy.TGT_TYPE] and p.type in [
+            refpolicy.TGT_TYPE,
+            refpolicy.SRC_TYPE,
+        ]:
+            avobjs = [av.obj_class] if av else []
             for obj in itertools.chain(p.obj_classes, avobjs):
                 if obj in objectmodel.implicitly_typed_objects:
                     ret = 0
@@ -86,11 +84,6 @@ def __param_insert(name, type, av, params):
             # as there is really no sane way to resolve the conflict
             # here. The caller can take other actions if needed.
             p.type = refpolicy.SRC_TYPE
-        else:
-            # There is some conflict - no way to resolve it really
-            # so we just leave the first entry and tell the caller
-            # there was a conflict.
-            ret = 1
     else:
         p = Param()
         p.name = name
@@ -141,17 +134,23 @@ def av_extract_params(av, params):
     """
     ret = 0
     found_src = False
-    if access.is_idparam(av.src_type):
-        if __param_insert(av.src_type, refpolicy.SRC_TYPE, av, params) == 1:
-            ret = 1
+    if (
+        access.is_idparam(av.src_type)
+        and __param_insert(av.src_type, refpolicy.SRC_TYPE, av, params) == 1
+    ):
+        ret = 1
 
-    if access.is_idparam(av.tgt_type):
-        if __param_insert(av.tgt_type, refpolicy.TGT_TYPE, av, params) == 1:
-            ret = 1
+    if (
+        access.is_idparam(av.tgt_type)
+        and __param_insert(av.tgt_type, refpolicy.TGT_TYPE, av, params) == 1
+    ):
+        ret = 1
 
-    if access.is_idparam(av.obj_class):
-        if __param_insert(av.obj_class, refpolicy.OBJ_CLASS, av, params) == 1:
-            ret = 1
+    if (
+        access.is_idparam(av.obj_class)
+        and __param_insert(av.obj_class, refpolicy.OBJ_CLASS, av, params) == 1
+    ):
+        ret = 1
 
     return ret
 
@@ -163,9 +162,8 @@ def type_rule_extract_params(rule, params):
     def extract_from_set(set, type):
         ret = 0
         for x in set:
-            if access.is_idparam(x):
-                if __param_insert(x, type, None, params):
-                    ret = 1
+            if access.is_idparam(x) and __param_insert(x, type, None, params):
+                ret = 1
         return ret
 
     ret = 0
@@ -174,24 +172,24 @@ def type_rule_extract_params(rule, params):
 
     if extract_from_set(rule.tgt_types, refpolicy.TGT_TYPE):
         ret = 1
-        
+
     if extract_from_set(rule.obj_classes, refpolicy.OBJ_CLASS):
         ret = 1
 
-    if access.is_idparam(rule.dest_type):
-        if __param_insert(rule.dest_type, refpolicy.DEST_TYPE, None, params):
-            ret = 1
-            
+    if access.is_idparam(rule.dest_type) and __param_insert(
+        rule.dest_type, refpolicy.DEST_TYPE, None, params
+    ):
+        ret = 1
+
     return ret
 
 def ifcall_extract_params(ifcall, params):
     ret = 0
     for arg in ifcall.args:
-        if access.is_idparam(arg):
-            # Assume interface arguments are source types. Fairly safe
-            # assumption for most interfaces
-            if __param_insert(arg, refpolicy.SRC_TYPE, None, params):
-                ret = 1
+        if access.is_idparam(arg) and __param_insert(
+            arg, refpolicy.SRC_TYPE, None, params
+        ):
+            ret = 1
 
     return ret
 
@@ -214,7 +212,7 @@ class AttributeSet:
         def parse_attr(line):
             fields = line[1:-1].split()
             if len(fields) != 2 or fields[0] != "Attribute":
-                raise SyntaxError("Syntax error Attribute statement %s" % line)
+                raise SyntaxError(f"Syntax error Attribute statement {line}")
             a = AttributeVector()
             a.name = fields[1]
 
@@ -311,17 +309,15 @@ class InterfaceVector:
         self.access.add_av(av)
 
     def to_string(self):
-        s = []
-        s.append("[InterfaceVector %s]" % self.name)
-        for av in self.access:
-            s.append(str(av))
+        s = [f"[InterfaceVector {self.name}]"]
+        s.extend(str(av) for av in self.access)
         return "\n".join(s)
 
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
-        return "<InterfaceVector %s:%s>" % (self.name, self.enabled)
+        return f"<InterfaceVector {self.name}:{self.enabled}>"
 
 
 class InterfaceSet:
@@ -337,9 +333,9 @@ class InterfaceSet:
 
     def to_file(self, fd):
         for iv in sorted(self.interfaces.values(), key=lambda x: x.name):
-            fd.write("[InterfaceVector %s " % iv.name)
+            fd.write(f"[InterfaceVector {iv.name} ")
             for param in sorted(iv.params.values(), key=lambda x: x.name):
-                fd.write("%s:%s " % (param.name, refpolicy.field_to_str[param.type]))
+                fd.write(f"{param.name}:{refpolicy.field_to_str[param.type]} ")
             fd.write("]\n")
             avl = sorted(iv.access.to_list())
             for av in avl:
@@ -350,7 +346,7 @@ class InterfaceSet:
         def parse_ifv(line):
             fields = line[1:-1].split()
             if len(fields) < 2 or fields[0] != "InterfaceVector":
-                raise SyntaxError("Syntax error InterfaceVector statement %s" % line)
+                raise SyntaxError(f"Syntax error InterfaceVector statement {line}")
             ifv = InterfaceVector()
             ifv.name = fields[1]
             if len(fields) == 2:
@@ -358,7 +354,7 @@ class InterfaceSet:
             for field in fields[2:]:
                 p = field.split(":")
                 if len(p) != 2:
-                    raise SyntaxError("Invalid param in InterfaceVector statement %s" % line)
+                    raise SyntaxError(f"Invalid param in InterfaceVector statement {line}")
                 param = Param()
                 param.name = p[0]
                 param.type = refpolicy.str_to_field[p[1]]
@@ -410,20 +406,15 @@ class InterfaceSet:
         self.index()
 
     def map_param(self, id, ifcall):
-        if access.is_idparam(id):
-            num = int(id[1:])
-            if num > len(ifcall.args):
-                # Tell caller to drop this because it must have
-                # been generated from an optional param.
-                return None
-            else:
-                arg = ifcall.args[num - 1]
-                if isinstance(arg, list):
-                    return arg
-                else:
-                    return [arg]
-        else:
+        if not access.is_idparam(id):
             return [id]
+        num = int(id[1:])
+        if num > len(ifcall.args):
+            # Tell caller to drop this because it must have
+            # been generated from an optional param.
+            return None
+        arg = ifcall.args[num - 1]
+        return arg if isinstance(arg, list) else [arg]
 
     def map_add_av(self, ifv, av, ifcall):
         src_types = self.map_param(av.src_type, ifcall)
@@ -462,7 +453,7 @@ class InterfaceSet:
         ifv = self.interfaces[interface.name]
         ifv.expanded = True
 
-        while len(stack) > 0:
+        while stack:
             cur, cur_ifcall = stack.pop(-1)
 
             cur_ifv = self.interfaces[cur.name]
@@ -483,7 +474,7 @@ class InterfaceSet:
                 try:
                     newif = if_by_name[ifcall.ifname]
                 except KeyError:
-                    self.o(_("Missing interface definition for %s" % ifcall.ifname))
+                    self.o(_(f"Missing interface definition for {ifcall.ifname}"))
                     continue
 
                 stack.append((newif, ifcall))
@@ -493,10 +484,10 @@ class InterfaceSet:
         # Create a map of interface names to interfaces -
         # this mirrors the interface vector map we already
         # have.
-        if_by_name = { }
-
-        for i in itertools.chain(headers.interfaces(), headers.templates()):
-            if_by_name[i.name] = i
+        if_by_name = {
+            i.name: i
+            for i in itertools.chain(headers.interfaces(), headers.templates())
+        }
 
 
         for interface in itertools.chain(headers.interfaces(), headers.templates()):
